@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ClientTrack — Client CRM for Video Editors</title>
+<link rel="icon" href="assets/favicon.svg">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ClientTrack">
+<meta name="theme-color" content="#0e0e11">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/auth.css">
+<link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+
+<div class="auth-loading" id="authLoading" style="display:flex;">Loading…</div>
+
+<div class="auth-gate" id="lockGate" style="display:none;">
+  <div class="auth-card lock-card">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">ClientTrack Locked</div>
+    <p class="lock-desc" id="lockDesc">Unlock with Face ID to continue.</p>
+    <button class="btn btn-primary lock-unlock-btn" id="unlockBtn">Unlock</button>
+  </div>
+</div>
+
+<div class="auth-gate" id="authGate" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">CT</div>
+      <div>ClientTrack</div>
+    </div>
+    <form id="authForm">
+      <div class="auth-field">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" autocomplete="username" required>
+      </div>
+      <div class="auth-field">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary auth-submit">Log in</button>
+      <p class="auth-error" id="authError"></p>
+    </form>
+  </div>
+</div>
+
+<div class="shell" style="display:none;">
+
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">CT</div>
+      <div class="brand-word">ClientTrack</div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item" data-page="prospects" data-mode="outreach">
+        <span class="nav-emoji">📇</span><span>Prospects</span>
+      </button>
+      <button class="nav-item" data-page="finder" data-mode="outreach">
+        <span class="nav-emoji">✨</span><span>AI Finder</span>
+      </button>
+      <button class="nav-item" data-page="goals" data-mode="outreach">
+        <span class="nav-emoji">🎯</span><span>Daily Goals</span>
+      </button>
+      <button class="nav-item" data-page="analysis" data-mode="outreach">
+        <span class="nav-emoji">📊</span><span>Analysis</span>
+      </button>
+      <button class="nav-item" data-page="scripts" data-mode="outreach">
+        <span class="nav-emoji">💬</span><span>DM Scripts</span>
+      </button>
+      <button class="nav-item" data-page="followup" data-mode="outreach">
+        <span class="nav-emoji">⏰</span><span>Follow-ups</span>
+      </button>
+      <button class="nav-item" data-page="tips" data-mode="outreach">
+        <span class="nav-emoji">💡</span><span>Tips</span>
+      </button>
+      <button class="nav-item" data-page="income" data-mode="clients">
+        <span class="nav-emoji">💰</span><span>Income</span>
+      </button>
+      <button class="nav-item" data-page="settings">
+        <span class="nav-emoji">⚙️</span><span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="pipeline-mini" id="pipelineMini">
+      <div class="pm-label">Pipeline</div>
+      <div class="pm-row"><span>Total</span><b id="pmTotal">0</b></div>
+      <div class="pm-row"><span>Sent</span><b id="pmSent">0</b></div>
+      <div class="pm-row"><span>Interested</span><b id="pmInterested">0</b></div>
+      <div class="pm-row"><span>Closed</span><b id="pmClosed">0</b></div>
+    </div>
+    <button class="sidebar-logout" id="logoutBtn">Log out</button>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburgerBtn" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+      <h1 class="page-title" id="pageTitle">Prospects</h1>
+      <button class="btn btn-icon" id="refreshBtn" aria-label="Refresh" title="Refresh">🔄</button>
+      <button class="btn btn-primary" id="topAddBtn">+ Add Prospect</button>
+    </header>
+
+    <main id="page-outlet">
+      <div class="page-loading">Loading…</div>
+    </main>
+  </div>
+</div>
+
+<!-- Generic modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalBox" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2 id="modalTitle">Modal</h2>
+      <button class="modal-close" id="modalCloseBtn" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Confirm delete dialog -->
+<div class="modal-backdrop" id="confirmBackdrop">
+  <div class="modal modal-sm" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2>Are you sure?</h2>
+      <button class="modal-close" id="confirmCloseBtn" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text" id="confirmText">This action cannot be undone.</p>
+      <div class="confirm-actions">
+        <button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button>
+        <button class="btn btn-danger" id="confirmOkBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/bootstrap.js"></script>
+</body>
+</html>
