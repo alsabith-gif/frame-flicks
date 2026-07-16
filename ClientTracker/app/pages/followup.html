@@ -1,0 +1,50 @@
+<div class="card">
+  <div class="card-title">⏰ Due Follow-ups</div>
+  <div id="dueFollowupsList"></div>
+</div>
+
+<div class="grid-2 mt-16">
+  <div class="card">
+    <div class="card-title">Follow-up Settings</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Follow-up 1 (days after DM)</label><input type="number" id="fuDay1"></div>
+      <div class="form-field"><label>Follow-up 2 (days)</label><input type="number" id="fuDay2"></div>
+      <div class="form-field"><label>Follow-up 3 (days)</label><input type="number" id="fuDay3"></div>
+      <div class="form-field"><label>Auto-mark No Reply after (days)</label><input type="number" id="fuAutoNoReply"></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="saveFuSettingsBtn">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Follow-up History</div>
+    <div id="fuHistoryList"></div>
+  </div>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Tone &amp; Script Templates</div>
+
+  <div class="chip-bar" id="roundTabs">
+    <button class="chip active" data-round="1">Follow-up 1</button>
+    <button class="chip" data-round="2">Follow-up 2</button>
+    <button class="chip" data-round="3">Follow-up 3</button>
+  </div>
+
+  <div class="tone-grid" id="toneGrid"></div>
+
+  <div class="form-field mt-16">
+    <label>Message Template (supports [Name], [Niche], [Platform])</label>
+    <textarea id="templateTextarea" style="min-height:110px;"></textarea>
+  </div>
+
+  <div class="card mt-16" style="background:var(--surface2);">
+    <div class="label-sm" style="margin-bottom:8px;">Live Preview</div>
+    <p id="templatePreview" style="font-size:13px;"></p>
+  </div>
+
+  <div class="form-actions mt-16">
+    <button class="btn btn-primary" id="saveTemplateBtn">Save Settings</button>
+  </div>
+</div>
