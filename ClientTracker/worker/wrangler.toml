@@ -1,5 +1,0 @@
-name = "clienttrack-ai"
-main = "worker.js"
-compatibility_date = "2024-11-01"
-
-# ANTHROPIC_API_KEY is set as a secret, not here — see SETUP.md.
