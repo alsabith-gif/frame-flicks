@@ -1,0 +1,65 @@
+.script-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.script-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.script-emoji-input {
+  width: 44px;
+  text-align: center;
+  font-size: 18px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 8px 0;
+}
+.script-title-input {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  flex: 1;
+  padding: 4px 2px;
+}
+.script-title-input:hover, .script-title-input:focus {
+  border-bottom-color: var(--border2);
+  outline: none;
+}
+.script-subtitle-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  width: 100%;
+  padding: 2px 2px 10px;
+}
+.script-subtitle-input:hover, .script-subtitle-input:focus {
+  border-bottom-color: var(--border2);
+  outline: none;
+}
+.script-body-textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  resize: vertical;
+}
+.script-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}

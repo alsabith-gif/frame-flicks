@@ -1,0 +1,13 @@
+.tips-list {
+  margin: 0;
+  padding-left: 18px;
+}
+.tips-list li {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 12px;
+  line-height: 1.55;
+}
+.tips-list li::marker {
+  color: var(--accent2);
+}

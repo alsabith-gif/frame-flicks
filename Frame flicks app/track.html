@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Project Progress — Frame Flicks</title>
+<link rel="icon" href="assets/frameflicks-icon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://esm.sh">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/tracker.css">
+</head>
+<body>
+
+<div class="track-shell">
+  <div class="track-card">
+    <img src="assets/frameflicks-logo.png" alt="Frame Flicks" class="track-logo">
+
+    <div id="trackLoading" class="track-state">Loading your project…</div>
+
+    <div id="trackNotFound" class="track-state" style="display:none;">
+      <div class="track-state-icon">🔍</div>
+      <p>We couldn't find a project for this link. Double-check the link your editor sent you, or ask them to resend it.</p>
+    </div>
+
+    <div id="trackContent" style="display:none;">
+      <div class="track-project-name" id="trackProject"></div>
+      <div class="track-client-name" id="trackClient"></div>
+
+      <div class="track-progress" id="trackProgress"></div>
+
+      <div class="track-note" id="trackNote" style="display:none;"></div>
+
+      <div class="track-updated" id="trackUpdated"></div>
+      <p class="track-hint">Bookmark this page to check back anytime — it updates automatically as your editor moves things along.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/tracker.js"></script>
+</body>
+</html>
