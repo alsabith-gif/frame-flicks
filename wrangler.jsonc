@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "frame-flicks",
+  "compatibility_date": "2026-07-22",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "Frame flicks app"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
