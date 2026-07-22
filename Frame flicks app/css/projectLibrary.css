@@ -1,0 +1,67 @@
+.pl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.pl-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.pl-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(34,31,26,0.10);
+}
+
+.pl-thumb {
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.pl-thumb-initial {
+  font-family: var(--font-display);
+  font-size: 34px;
+  color: rgba(34,31,26,0.35);
+}
+.pl-thumb-priority {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+}
+
+.pl-card-body {
+  padding: 10px 12px 12px;
+}
+.pl-card-title {
+  font-weight: 600;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-card-client {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.pl-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.pl-card-due {
+  font-size: 11px;
+  color: var(--muted);
+}
+.pl-card-amount {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
