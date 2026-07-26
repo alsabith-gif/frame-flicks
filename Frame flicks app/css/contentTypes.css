@@ -1,0 +1,26 @@
+.ct-add-row {
+  display: flex;
+  gap: 8px;
+}
+.ct-add-row input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  font-size: 13px;
+}
+
+.ct-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.ct-row:first-child { border-top: none; }
+.ct-name {
+  font-weight: 500;
+  font-size: 13.5px;
+}
