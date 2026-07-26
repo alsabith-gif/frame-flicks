@@ -1,0 +1,41 @@
+<section class="settings-page">
+
+  <div class="settings-card">
+    <h2 class="settings-title">App Mode</h2>
+    <p class="settings-desc">Switch between finding new clients and tracking existing work.</p>
+    <div class="mode-switcher" id="settingsModeSwitcher">
+      <button class="mode-tab" data-mode="outreach">
+        <span class="mode-tab-emoji">🎯</span><span>Outreach</span>
+      </button>
+      <button class="mode-tab" data-mode="clients">
+        <span class="mode-tab-emoji">💼</span><span>Clients</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="settings-card">
+    <h2 class="settings-title">Face ID Lock</h2>
+    <p class="settings-desc" id="faceLockDesc">
+      Require Face ID / Touch ID to open the app on this device. You'll stay logged in — this just adds a quick lock screen.
+    </p>
+    <div class="settings-row">
+      <span id="faceLockStatus" class="settings-row-label">Off</span>
+      <button class="toggle-switch" id="faceLockToggle" role="switch" aria-checked="false">
+        <span class="toggle-knob"></span>
+      </button>
+    </div>
+    <p class="settings-note" id="faceLockNote"></p>
+  </div>
+
+  <div class="settings-card">
+    <h2 class="settings-title">About</h2>
+    <p class="settings-desc">ClientTrack syncs your data to the cloud — the same prospects, income, and goals show up on every device you log into.</p>
+  </div>
+
+  <div class="settings-card">
+    <h2 class="settings-title">Account</h2>
+    <p class="settings-desc">Sign out of ClientTrack on this device.</p>
+    <button class="sidebar-logout" id="settingsLogoutBtn">Log out</button>
+  </div>
+
+</section>
