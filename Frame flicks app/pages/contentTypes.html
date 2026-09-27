@@ -1,0 +1,20 @@
+<div class="card" style="max-width:520px;">
+  <div class="card-title">Add a Content Type</div>
+  <p class="muted" style="margin-bottom:14px;">
+    These are the options that show up in the <b>Content Type</b> dropdown when you add or edit a project
+    on the Dashboard. This list only affects Client mode — it has nothing to do with Outreach's Platform field.
+  </p>
+  <div class="ct-add-row">
+    <input type="text" id="ctNewName" placeholder="e.g. Instagram Reel">
+    <button class="btn btn-primary" id="ctAddBtn">+ Add</button>
+  </div>
+</div>
+
+<div class="card mt-16" style="max-width:520px;">
+  <div class="card-title">Your Content Types</div>
+  <div id="ctList"></div>
+  <div class="empty-state" id="ctEmpty" style="display:none;">
+    <div class="icon">🏷️</div>
+    <p>No content types yet — add your first one above.</p>
+  </div>
+</div>
