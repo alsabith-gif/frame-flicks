@@ -1,0 +1,25 @@
+.inv-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .inv-wrap { grid-template-columns: minmax(0, 1fr); } }
+.inv-head { display: flex; justify-content: space-between; align-items: center; }
+.inv-sub { font-family: var(--font-display); font-size: 13px; margin: 16px 0 8px; color: var(--muted); }
+.inv-line { display: grid; grid-template-columns: 1fr 64px 84px auto; gap: 6px; align-items: center; margin-bottom: 6px; font-size: 13px; }
+.inv-line input { width: 100%; min-width: 0; }
+.inv-line .inv-amt { grid-column: 1 / -1; font-size: 11px; color: var(--muted); margin-top: -3px; }
+.inv-add { display: flex; gap: 8px; margin-bottom: 14px; }
+.inv-add select { flex: 1; min-width: 0; }
+.inv-saved-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.inv-saved-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-preview { background: #fff; color: #221f1a; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; font-size: 13px; }
+.inv-preview h1 { font-family: var(--font-display); font-size: 22px; margin: 0; }
+.inv-preview .row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
+.inv-preview .meta { color: #7a7468; font-size: 12px; }
+.inv-preview table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+.inv-preview th { text-align: left; font-size: 11px; text-transform: uppercase; color: #7a7468; border-bottom: 1px solid #ddd; padding: 6px 0; }
+.inv-preview td { padding: 6px 0; border-bottom: 1px solid #eee; vertical-align: top; }
+.inv-preview td:last-child, .inv-preview th:last-child { text-align: right; white-space: nowrap; }
+.inv-preview .total { font-weight: 700; font-size: 16px; border-top: 2px solid #221f1a; margin-top: 4px; padding-top: 8px; }
+@media print {
+  body * { visibility: hidden; }
+  #invPreview, #invPreview * { visibility: visible; }
+  #invPreview { position: absolute; left: 0; top: 0; width: 100%; border: none; }
+}

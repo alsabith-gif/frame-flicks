@@ -1,0 +1,8 @@
+.ps-wrap { max-width: 640px; }
+.ps-row { display: grid; grid-template-columns: 1fr 74px 96px; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.ps-row .note { display: block; font-size: 11px; color: var(--muted); }
+.ps-row input { width: 100%; min-width: 0; text-align: right; }
+.ps-row .amt { text-align: right; font-weight: 600; }
+.ps-row.off { opacity: 0.5; }
+.ps-foot { display: flex; justify-content: space-between; padding: 10px 0; font-weight: 700; }
+.ps-warn { color: var(--red); font-size: 12px; }
