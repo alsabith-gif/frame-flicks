@@ -1,0 +1,9 @@
+.insight-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.insight-item:first-child { border-top: none; }
+.insight-item .ii-icon { flex-shrink: 0; }
