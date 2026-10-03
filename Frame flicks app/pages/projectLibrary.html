@@ -1,0 +1,31 @@
+<div class="toolbar">
+  <input type="text" id="plSearch" class="search-input" placeholder="Search projects or clients…">
+  <select class="select-filter" id="plClientFilter">
+    <option value="">All clients</option>
+  </select>
+  <select class="select-filter" id="plStatusFilter">
+    <option value="">All statuses</option>
+    <option value="Paid">Paid</option>
+    <option value="Pending">Pending</option>
+    <option value="Partial">Partial</option>
+  </select>
+  <select class="select-filter" id="plPriorityFilter">
+    <option value="">All priorities</option>
+  </select>
+  <select class="select-filter" id="plStageFilter">
+    <option value="">Active + Delivered</option>
+    <option value="active">Active only</option>
+    <option value="delivered">Delivered only</option>
+  </select>
+  <select class="select-filter" id="plSort">
+    <option value="recent">Sort: Most recent</option>
+    <option value="deadline">Sort: Deadline soonest</option>
+  </select>
+</div>
+
+<div class="pl-grid" id="plGrid"></div>
+
+<div class="empty-state" id="plEmpty" style="display:none;">
+  <div class="icon">🎞️</div>
+  <p>No projects match this filter.</p>
+</div>
