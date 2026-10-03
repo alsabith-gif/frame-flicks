@@ -1,0 +1,53 @@
+<div class="inv-wrap">
+  <div class="inv-form settings-card" id="invForm" data-type="function">
+    <div class="inv-head"><h2 class="settings-title">Invoice details</h2><button class="btn btn-ghost btn-sm" id="invPricesBtn">✏️ Edit prices</button></div>
+    <div class="form-field" style="margin-bottom:12px"><label>Invoice type</label><select id="invType"><option value="function">Function shoot</option><option value="monthly">Monthly package</option></select></div>
+    <div class="form-grid">
+      <div class="form-field"><label>Client name</label><input type="text" id="invClient"></div>
+      <div class="form-field"><label>Client phone</label><input type="text" id="invPhone"></div>
+      <div class="form-field only-mo"><label>Instagram handle</label><input type="text" id="invHandle" placeholder="@clientname"></div>
+      <div class="form-field only-fn"><label>Function / project</label><input type="text" id="invEvent" placeholder="e.g. Wedding reception"></div>
+      <div class="form-field only-fn"><label>Location</label><input type="text" id="invLoc"></div>
+      <div class="form-field only-fn"><label>Function date</label><input type="date" id="invEventDate"></div>
+      <div class="form-field"><label>Invoice date</label><input type="date" id="invDate"></div>
+      <div class="form-field only-fn"><label>Function size</label><select id="invSize"></select></div>
+      <div class="form-field only-fn"><label>Delivery speed</label><select id="invDelivery"></select></div>
+      <div class="form-field only-mo"><label>Package</label><select id="invPkg"></select></div>
+      <div class="form-field only-mo"><label>Package price (₹)</label><input type="number" id="invPkgPrice" min="0"></div>
+      <div class="form-field only-mo"><label>Period starts</label><input type="date" id="invPStart"></div>
+      <div class="form-field only-mo"><label>Period ends</label><input type="date" id="invPEnd"></div>
+      <div class="form-field"><label>Colour theme</label><select id="invTheme"><option value="gold">Gold and charcoal</option><option value="green">Green and gold</option><option value="teal">Teal</option><option value="rose">Rose</option><option value="blue">Blue</option></select></div>
+    </div>
+    <div class="only-mo inv-add" style="margin-top:10px"><button class="btn btn-ghost btn-sm" id="invPkgEdit">📦 Edit packages</button></div>
+    <h3 class="inv-sub"><span class="only-fn">Price add-ons</span><span class="only-mo">Extras</span></h3>
+    <div id="invLines"></div>
+    <div class="inv-add"><select id="invAddSel"></select><button class="btn btn-primary btn-sm" id="invAddBtn">+ Add</button></div>
+    <div class="form-grid">
+      <div class="form-field"><label>Discount (₹)</label><input type="number" id="invDiscount" min="0"></div>
+      <div class="form-field only-fn"><label>Advance paid (₹)</label><input type="number" id="invAdvance" min="0"></div>
+    </div>
+    <div class="only-fn">
+      <h3 class="inv-sub">What's included <span class="muted" style="font-weight:400">— fills itself from the price; edit freely</span></h3>
+      <div id="invGroups"></div>
+      <div class="inv-add"><button class="btn btn-ghost btn-sm" id="invGAdd">+ Add section</button><button class="btn btn-ghost btn-sm" id="invGReset">↺ Reset to automatic</button></div>
+    </div>
+    <div class="only-mo">
+      <h3 class="inv-sub">Package features <span class="muted" style="font-weight:400">— one per line, use | for a small note</span></h3>
+      <textarea id="invFeatures" rows="6" style="width:100%"></textarea>
+      <h3 class="inv-sub">Your month with us <span class="muted" style="font-weight:400">— one per line: number | label</span></h3>
+      <textarea id="invStats" rows="3" style="width:100%"></textarea>
+      <div class="inv-add" style="margin-top:6px"><button class="btn btn-ghost btn-sm" id="invMoReset">↺ Reset to package</button></div>
+    </div>
+    <h3 class="inv-sub">Terms</h3>
+    <textarea id="invTerms" rows="4" style="width:100%"></textarea>
+    <div class="inv-add" style="margin-top:6px"><button class="btn btn-ghost btn-sm" id="invTermsDefault">Save as my default</button></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" id="invNewBtn">New</button>
+      <button class="btn btn-ghost" id="invSaveBtn">💾 Save</button>
+      <button class="btn btn-primary" id="invPrintBtn">🖨️ Print / save PDF</button>
+    </div>
+    <h3 class="inv-sub">Saved invoices</h3>
+    <div id="invSaved"></div>
+  </div>
+  <div class="inv-preview-box"><div id="invPreview"></div></div>
+</div>
