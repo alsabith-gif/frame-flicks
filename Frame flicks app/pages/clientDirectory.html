@@ -1,0 +1,26 @@
+<div id="cdListView">
+  <div class="toolbar">
+    <input type="text" id="cdSearch" class="search-input" placeholder="Search clients by name or source…">
+    <select class="select-filter" id="cdSort">
+      <option value="recent">Sort: Most recent</option>
+      <option value="source">Sort: Source</option>
+      <option value="revenue">Sort: Revenue</option>
+      <option value="name">Sort: Name (A–Z)</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Client</th><th>Source</th><th>Since</th><th>Projects</th><th>Revenue</th></tr></thead>
+      <tbody id="cdTbody"></tbody>
+    </table>
+  </div>
+  <div class="mobile-cards" id="cdMobileCards"></div>
+
+  <div class="empty-state" id="cdEmpty" style="display:none;">
+    <div class="icon">🗂️</div>
+    <p>No clients yet — they'll show up here once a Prospect closes or you add one on the Dashboard.</p>
+  </div>
+</div>
+
+<div id="cdProfileView" style="display:none;"></div>
