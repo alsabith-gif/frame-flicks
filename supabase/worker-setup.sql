@@ -418,3 +418,60 @@ grant execute on function public.worker_set_status(uuid, text) to authenticated;
 select proname from pg_proc where proname = 'worker_set_status';
 select policyname, cmd, roles from pg_policies
 where schemaname = 'public' and tablename = 'worker_tasks' order by policyname;
+
+
+-- =====================================================================
+-- PART 5 — pay tracking safety rules   (Phase 5)
+-- The admin marks jobs paid / unpaid straight from the app (the admin policy
+-- from PART 3 already allows that; workers still cannot write anything).
+-- This part adds three rules that the DATABASE enforces on every write, so
+-- they hold even if an old copy of the app is still open on someone's phone:
+--   1. Only a job that is DONE can be marked paid.
+--   2. Once a job is paid, its pay amount is LOCKED. (Today a project re-save
+--      could silently overwrite it.) To change a paid amount: undo the
+--      payment, change the amount, then mark it paid again.
+--   3. A paid job always has a paid date (today, India time, if none is given);
+--      an unpaid job never has one.
+-- Safe to run twice.
+-- =====================================================================
+
+create or replace function public.worker_tasks_pay_guard()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- Rule 1
+  if new.pay_status = 'paid' and new.status is distinct from 'done' then
+    raise exception 'Only a job that is Done can be marked paid.' using errcode = '55000';
+  end if;
+
+  -- Rule 2 (compares the stored amounts, so re-saving the same amount is fine)
+  if tg_op = 'UPDATE'
+     and old.pay_status = 'paid' and new.pay_status = 'paid'
+     and new.pay_amount is distinct from old.pay_amount then
+    raise exception 'This job is already paid, so its pay amount is locked. Undo the payment first if the amount must change.'
+      using errcode = '55000';
+  end if;
+
+  -- Rule 3
+  if new.pay_status = 'paid' then
+    new.paid_on := coalesce(new.paid_on, (now() at time zone 'Asia/Kolkata')::date);
+  else
+    new.paid_on := null;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists worker_tasks_pay_guard on public.worker_tasks;
+create trigger worker_tasks_pay_guard
+  before insert or update on public.worker_tasks
+  for each row execute function public.worker_tasks_pay_guard();
+
+-- Check: you should see the guard trigger, and STILL only the same two policies
+-- (admin all / worker reads own) — a worker still cannot write to this table.
+select tgname from pg_trigger
+where tgrelid = 'public.worker_tasks'::regclass and not tgisinternal order by tgname;
+select policyname, cmd, roles from pg_policies
+where schemaname = 'public' and tablename = 'worker_tasks' order by policyname;

@@ -10,17 +10,20 @@ import { showToast } from '../toast.js';
 import { escHtml } from '../format.js';
 import { localToday, fmtDay, fmtTime, relDay, STATUS_LABEL, STATUS_CLASS } from '../worker/workerView.js';
 import { summarize, groupByWorker, filterJobs, isOverdue, wasMarkedDoneRecently, fmtStamp } from '../crewOverview.js';
+import { summarizeEarnings } from '../worker/earningsCalc.js';
+import { money, owedJobs, totalPay, canMarkPaid, isPaid, validatePaidDate, markPaid, markUnpaid } from '../pay.js';
 
 const ROLE_LABEL = { camera: 'Camera', editor: 'Editor' };
-// Pay columns are deliberately not requested here (Phase 5 adds the earnings view).
-const TASK_COLS = 'id, project_id, worker_id, role, title, client_name, location, shoot_date, shoot_time, due_date, status, done_at, updated_at';
+// Admin only: this page may read every worker's pay (the database refuses anyone else).
+const TASK_COLS = 'id, project_id, worker_id, role, title, client_name, location, shoot_date, shoot_time, due_date, status, done_at, updated_at, pay_amount, pay_status, paid_on';
 let workers = [];
 let lastSignIn = {};
 let tasks = [];
 let tasksLoaded = false;
 let tasksError = '';
 let tasksLoadedAt = null;
-let filters = { worker: '', status: '', when: '' };
+let filters = { worker: '', status: '', when: '', pay: '' };
+const NO_FILTERS = { worker: '', status: '', when: '', pay: '' };
 let focusWired = false;
 
 function fmtDate(iso) {
@@ -58,7 +61,19 @@ function summaryHtml(w, today) {
       <span class="wk-pill wk-pill-blue">In progress <b>${s.in_progress}</b></span>
       <span class="wk-pill wk-pill-green">Done <b>${s.done}</b></span>
       ${s.overdue ? `<span class="wk-pill wk-pill-red">${s.overdue} overdue</span>` : ''}
-    </div>${last}`;
+    </div>${earningsHtml(mine)}${last}`;
+}
+
+// Earned / Paid / Still owed for one worker (same rules the worker sees on My Earnings)
+function earningsHtml(mine) {
+  const e = summarizeEarnings(mine);
+  if (!e.done) return '<div class="wk-earn wk-earn-none">No finished jobs yet</div>';
+  return `
+    <div class="wk-earn">
+      <span class="wk-pill wk-pill-money">Earned <b>${escHtml(money(e.earned))}</b></span>
+      <span class="wk-pill wk-pill-green">Paid <b>${escHtml(money(e.paid))}</b></span>
+      <span class="wk-pill${e.owed ? ' wk-pill-owed' : ''}">Still owed <b>${escHtml(money(e.owed))}</b></span>
+    </div>`;
 }
 
 function render() {
@@ -82,6 +97,7 @@ function render() {
       </div>
       <div class="wk-actions">
         ${tasksLoaded && (groupByWorker(tasks)[w.user_id] || []).length ? '<button class="btn btn-ghost btn-sm" data-act="jobs">View jobs</button>' : ''}
+        ${tasksLoaded && owedJobs(tasks, w.user_id).length ? `<button class="btn btn-primary btn-sm" data-act="payall">Mark all owed as paid (${owedJobs(tasks, w.user_id).length})</button>` : ''}
         <button class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
         ${w.active ? '<button class="btn btn-ghost btn-sm" data-act="resend">Send new code</button>' : ''}
         ${w.active ? '<button class="btn btn-ghost btn-sm" data-act="reset">Reset access</button>' : ''}
@@ -161,7 +177,22 @@ function jobRow(t, today) {
       <div class="wk-job-sub">${escHtml(workerName(t.worker_id))} · ${escHtml(ROLE_LABEL[t.role] || t.role)}${t.client_name ? ` · ${escHtml(t.client_name)}` : ''}</div>
       ${dates.length ? `<div class="wk-job-dates">${dates.join('<span class="wk-sep">·</span>')}</div>` : ''}
       ${done ? `<div class="wk-job-done">✅ ${escHtml(workerName(t.worker_id))} marked this done${t.done_at ? ` on ${escHtml(fmtStamp(t.done_at))}` : ''}</div>` : ''}
+      ${payLine(t)}
     </div>`;
+}
+
+// The pay line of a job card: amount, paid / owed, and the button for it.
+function payLine(t) {
+  const amount = escHtml(money(t.pay_amount));
+  if (isPaid(t)) {
+    return `<div class="wk-job-pay is-paid"><span>💰 ${amount} · <b>Paid${t.paid_on ? ` on ${escHtml(fmtDay(t.paid_on))}` : ''}</b></span>
+      <button type="button" class="btn btn-ghost btn-sm" data-pay-undo="${escHtml(t.id)}">Undo paid</button></div>`;
+  }
+  if (canMarkPaid(t)) {
+    return `<div class="wk-job-pay is-owed"><span>💰 ${amount} · <b>Not paid yet</b></span>
+      <button type="button" class="btn btn-primary btn-sm" data-pay-one="${escHtml(t.id)}">Mark paid</button></div>`;
+  }
+  return `<div class="wk-job-pay"><span>💰 ${amount} · pay when Done</span></div>`;
 }
 
 function renderJobs() {
@@ -170,12 +201,18 @@ function renderJobs() {
   const stamp = document.getElementById('wkUpdated');
   if (!bar || !box) return;
 
+  const owedBox = document.getElementById('wkOwedTotal');
   if (tasksError) {
-    bar.innerHTML = ''; stamp.textContent = '';
+    bar.innerHTML = ''; stamp.textContent = ''; if (owedBox) owedBox.textContent = '';
     box.innerHTML = `<div class="wk-notice error"><span>${escHtml(tasksError)}</span></div>`;
     return;
   }
-  if (!tasksLoaded) { bar.innerHTML = ''; box.innerHTML = '<p class="wk-muted">Loading crew jobs…</p>'; return; }
+  if (!tasksLoaded) { bar.innerHTML = ''; if (owedBox) owedBox.textContent = ''; box.innerHTML = '<p class="wk-muted">Loading crew jobs…</p>'; return; }
+
+  if (owedBox) {
+    const owed = owedJobs(tasks);
+    owedBox.textContent = owed.length ? `Still owed to crew: ${money(totalPay(owed))}` : '';
+  }
 
   stamp.textContent = tasksLoadedAt ? `Updated ${tasksLoadedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : '';
   const opt = (v, label, cur) => `<option value="${escHtml(v)}"${cur === v ? ' selected' : ''}>${escHtml(label)}</option>`;
@@ -183,13 +220,73 @@ function renderJobs() {
     <select data-filter="worker" aria-label="Worker">${opt('', 'All workers', filters.worker)}${workers.map((w) => opt(w.user_id, w.name || 'Unnamed', filters.worker)).join('')}</select>
     <select data-filter="status" aria-label="Status">${opt('', 'Any status', filters.status)}${opt('todo', 'To do', filters.status)}${opt('in_progress', 'In progress', filters.status)}${opt('done', 'Done', filters.status)}</select>
     <select data-filter="when" aria-label="When">${opt('', 'Any time', filters.when)}${opt('overdue', 'Overdue', filters.when)}${opt('upcoming', 'Upcoming', filters.when)}${opt('recent', 'Marked done recently', filters.when)}</select>
-    ${filters.worker || filters.status || filters.when ? '<button type="button" class="btn btn-ghost btn-sm" data-filter-clear>Clear</button>' : ''}`;
+    <select data-filter="pay" aria-label="Payment">${opt('', 'Any payment', filters.pay)}${opt('owed', 'Still owed', filters.pay)}${opt('paid', 'Paid', filters.pay)}</select>
+    ${filters.worker || filters.status || filters.when || filters.pay ? '<button type="button" class="btn btn-ghost btn-sm" data-filter-clear>Clear</button>' : ''}`;
 
   const today = localToday();
   const rows = filterJobs(tasks, filters, today);
   if (!tasks.length) box.innerHTML = '<p class="wk-muted">No jobs are assigned to any worker yet. Assign crew from a project (Dashboard → project → Assign crew).</p>';
   else if (!rows.length) box.innerHTML = '<p class="wk-muted">No jobs match these filters.</p>';
   else box.innerHTML = `<div class="wk-jobs">${rows.map((t) => jobRow(t, today)).join('')}</div>`;
+}
+
+// ---- Marking jobs paid (admin only; the database enforces the rules again)
+// jobs: the jobs to pay, all Done and unpaid. One paid date for the whole batch.
+function openPayModal(jobs, heading) {
+  const today = localToday();
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <form id="wkPayForm">
+      <p class="wk-pay-intro">${escHtml(heading)}</p>
+      <ul class="wk-pay-list">${jobs.map((j) => `<li><span>${escHtml(j.title)}</span><b>${escHtml(money(j.pay_amount))}</b></li>`).join('')}</ul>
+      <p class="wk-pay-total">Total <b>${escHtml(money(totalPay(jobs)))}</b></p>
+      <div class="form-field"><label for="wkPaidOn">Paid on</label><input type="date" id="wkPaidOn" value="${today}" max="${today}" required></div>
+      <p class="wk-note-small">Once a job is marked paid, its pay amount is locked. You can undo it any time.</p>
+      <p class="wk-form-error" id="wkPayError"></p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" id="wkPayCancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="wkPayGo">Mark paid</button>
+      </div>
+    </form>`;
+  openModal('Mark as paid', body);
+  body.querySelector('#wkPayCancel').addEventListener('click', closeModal);
+  body.querySelector('#wkPayForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = body.querySelector('#wkPayError');
+    const btn = body.querySelector('#wkPayGo');
+    const date = body.querySelector('#wkPaidOn').value;
+    const bad = validatePaidDate(date, localToday());
+    if (bad) { err.textContent = bad; return; }
+    btn.disabled = true; btn.textContent = 'Saving…'; err.textContent = '';
+    try {
+      const changed = await markPaid(jobs.map((j) => j.id), date, localToday());
+      closeModal();
+      const skipped = jobs.length - changed;
+      if (!changed) setNotice('Nothing was changed — those jobs are no longer Done, or were already paid. The list has been refreshed.', { error: true });
+      else {
+        showToast(`${changed} job${changed === 1 ? '' : 's'} marked paid`);
+        if (skipped) setNotice(`${skipped} job${skipped === 1 ? ' was' : 's were'} skipped because ${skipped === 1 ? 'it was' : 'they were'} no longer Done or already paid.`, { error: true });
+      }
+      loadTasks();
+    } catch (ex) {
+      err.textContent = ex.message; btn.disabled = false; btn.textContent = 'Mark paid';
+    }
+  });
+}
+
+function undoPaid(job) {
+  openConfirm(
+    `Mark "${job.title}" (${money(job.pay_amount)}) as NOT paid? It goes back to "Still owed", and you can change its pay amount again.`,
+    async () => {
+      try {
+        const changed = await markUnpaid([job.id]);
+        showToast(changed ? 'Payment undone' : 'Already not paid');
+      } catch (ex) { setNotice(`Could not undo the payment: ${ex.message}`, { error: true }); }
+      loadTasks();
+    },
+    null,
+    'Undo payment'
+  );
 }
 
 // Runs a server call. On failure, shows the reason — inside the popup when a
@@ -289,10 +386,17 @@ async function onAction(act, w) {
   if (act === 'edit') return openEdit(w);
 
   if (act === 'jobs') {
-    filters = { worker: w.user_id, status: '', when: '' };
+    filters = { ...NO_FILTERS, worker: w.user_id };
     renderJobs();
     const wrap = document.getElementById('wkJobsWrap');
     if (wrap && wrap.scrollIntoView) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return undefined;
+  }
+
+  if (act === 'payall') {
+    const owed = owedJobs(tasks, w.user_id);
+    if (!owed.length) { showToast('Nothing is owed to this worker'); return undefined; }
+    openPayModal(owed, `Mark everything owed to ${w.name || 'this worker'} as paid (${owed.length} finished job${owed.length === 1 ? '' : 's'}):`);
     return undefined;
   }
 
@@ -358,8 +462,18 @@ export function init() {
       renderJobs();
     });
     wrap.addEventListener('click', (e) => {
-      if (e.target.closest('[data-filter-clear]')) { filters = { worker: '', status: '', when: '' }; renderJobs(); }
+      if (e.target.closest('[data-filter-clear]')) { filters = { ...NO_FILTERS }; renderJobs(); }
       if (e.target.closest('#wkJobsRefresh')) { setNotice(''); loadTasks(); }
+      const one = e.target.closest('[data-pay-one]');
+      if (one) {
+        const t = tasks.find((x) => x.id === one.dataset.payOne);
+        if (t && canMarkPaid(t)) openPayModal([t], `Mark this job as paid to ${workerName(t.worker_id)}:`);
+      }
+      const undo = e.target.closest('[data-pay-undo]');
+      if (undo) {
+        const t = tasks.find((x) => x.id === undo.dataset.payUndo);
+        if (t && isPaid(t)) undoPaid(t);
+      }
     });
   }
   // Coming back to the app should show what workers did meanwhile.

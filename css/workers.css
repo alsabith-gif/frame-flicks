@@ -89,3 +89,21 @@
 .wk-sep { margin: 0 6px; color: var(--muted); }
 .wk-rel { color: var(--muted); font-size: 12px; }
 .wk-job-done { font-size: 12.5px; color: var(--green); }
+
+/* ---------- Pay tracking (Phase 5, admin only) ---------- */
+.wk-earn { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.wk-earn-none { font-size: 12px; color: var(--muted); }
+.wk-pill-money { background: rgba(201, 162, 75, 0.14); color: var(--text); }
+.wk-pill-owed { background: rgba(201, 162, 75, 0.22); color: var(--text); font-weight: 600; }
+.wk-owed-total { font-size: 13px; color: var(--text); font-weight: 600; }
+.wk-job-pay {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  font-size: 13px; padding-top: 8px; margin-top: 2px; border-top: 1px solid var(--border);
+}
+.wk-job-pay.is-paid b { color: var(--green); }
+.wk-job-pay.is-owed b { color: var(--text); }
+.wk-pay-intro { margin: 0 0 8px; font-size: 14px; }
+.wk-pay-list { list-style: none; margin: 0 0 8px; padding: 0; max-height: 220px; overflow: auto; }
+.wk-pay-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.wk-pay-list li span { min-width: 0; word-break: break-word; }
+.wk-pay-total { margin: 0 0 12px; font-size: 15px; text-align: right; }

@@ -2,7 +2,7 @@
 // opened for a signed-in worker (see bootstrap.js). It shares the Frame Flicks
 // look but has none of the admin menu, and never loads admin code or data.
 //
-// Pages are listed in PAGES so later phases (Earnings) just add an entry here.
+// Pages are listed in PAGES, so a new tab is just a new entry here.
 
 import { showToast } from '../toast.js';
 import { escHtml } from '../format.js';
@@ -10,12 +10,14 @@ import { getSession, fetchProfile, logout } from '../cloud.js';
 import { cachedTasks, fetchMyTasks, saveCachedTasks, setTaskStatus } from './workerData.js';
 import { renderMyWork } from './myWork.js';
 import { renderWorkerCalendar, resetCalendarView } from './workerCalendar.js';
+import { renderMyEarnings } from './myEarnings.js';
 import { renderWorkerSettings } from './workerSettings.js';
 import { localToday, isClosed, ROLE_LABEL, STATUS_LABEL } from './workerView.js';
 
 const PAGES = [
   { id: 'work', label: 'My Work', icon: '🎬' },
   { id: 'calendar', label: 'My Calendar', icon: '📅' },
+  { id: 'earnings', label: 'My Earnings', icon: '💰' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -45,6 +47,7 @@ function renderPage() {
   state.pending = new Set(pendingOps.keys());
   if (page === 'work') renderMyWork(main, state);
   else if (page === 'calendar') renderWorkerCalendar(main, state);
+  else if (page === 'earnings') renderMyEarnings(main, state);
   else if (page === 'settings') renderWorkerSettings(main, { profile });
   if (page === 'work') showCardMsg();
 }
@@ -85,7 +88,7 @@ async function refresh() {
   } finally {
     refreshing = false;
     if (spin) spin.classList.remove('spinning');
-    if (page === 'work' || page === 'calendar') renderPage();   // never redraw Settings: it would wipe a half-typed password
+    if (page === 'work' || page === 'calendar' || page === 'earnings') renderPage();   // never redraw Settings: it would wipe a half-typed password
   }
 }
 

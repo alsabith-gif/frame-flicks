@@ -453,3 +453,100 @@ The login screen must say **Phase 4 · job status, calendar & crew overview · b
   background refresh, and a guard so a refresh in the middle of saving never flips a card back.
 - Admin: per-worker status summary, overdue counts, the Crew jobs list with filters, and "marked done" lines.
 - The admin query for crew jobs deliberately does not ask for pay (the earnings view arrives in Phase 5).
+
+
+---
+
+## Phase 5 — earnings, paying your crew, and protecting pay history
+
+What you get:
+- **Worker (phone):** a new **My Earnings** tab (💰). Four numbers: **Jobs completed**, **Earned**,
+  **Paid** and **Still owed**, plus a **By month** list (tap a month to see its jobs and what is paid
+  or not). A worker sees **only their own** numbers. Pay appears on this tab and nowhere else.
+- **Admin → Workers page:**
+  - every worker card shows **Earned / Paid / Still owed**;
+  - **Mark all owed as paid (n)** on a worker's card — one paid date for all of them;
+  - in **Crew jobs**, every job shows its pay, with **Mark paid** (for a finished job) or **Undo paid**;
+  - a new **Any payment** filter (Still owed / Paid), and **"Still owed to crew: ₹…"** at the top of the list.
+- **Pay history is protected.** Once a job is marked paid, its pay amount is **locked**. Re-saving the
+  project can no longer change it.
+
+**What the words mean** (same everywhere):
+- **Earned** = pay of jobs the worker marked **Done**.
+- **Paid** = those jobs that you marked paid.
+- **Still owed** = Done jobs not paid yet. So Earned = Paid + Still owed, always.
+- A job can be marked paid **only after it is Done**.
+
+### 1. Run PART 5 of `supabase/worker-setup.sql`
+Easiest: open the separate file **`phase5-part5.sql`**, copy everything in it.
+Supabase → **SQL Editor** → **New query** → paste → **Run** (click **Run query** if a warning appears).
+At the bottom you must see:
+- a table with **`worker_tasks_pay_guard`** and **`worker_tasks_touch`**
+- the **same two** policies as before: `worker_tasks: admin all` and `worker_tasks: worker reads own`.
+
+Safe to run twice. **Do this before step 2.**
+
+### 2. Upload the new app files (GitHub, same as before)
+Changed/new this time: `css/income.css`, `css/worker.css`, `css/workers.css`, `js/crew.js`, `js/crewForm.js`,
+`js/crewOverview.js`, `js/pay.js` (new), `js/version.js`, `js/pages/income.js`, `js/pages/workers.js`,
+`pages/workers.html`, `js/worker/workerApp.js`, `js/worker/earningsCalc.js` (new),
+`js/worker/myEarnings.js` (new), `SETUP.md` and `supabase/worker-setup.sql`.
+Wait 2 minutes, hard-refresh (Ctrl + Shift + R). The login screen must say
+**Phase 5 · earnings & pay tracking · build 5**.
+
+### 3. Test it (use your test worker and the project you assigned earlier)
+1. **Worker phone:** open **My Earnings** — before any job is Done it says *"Nothing earned yet"*.
+2. **Worker:** on My Work, mark a job **Done**. Open **My Earnings**: *Jobs completed 1*, *Earned* = the pay
+   you set, *Paid ₹0*, *Still owed* = the same amount.
+3. **Admin:** Workers page → tap **↻ Refresh**. The worker's card shows *Earned ₹… · Paid ₹0 · Still owed ₹…*.
+4. **Admin:** in **Crew jobs**, that job shows **Mark paid**. Tap it → a popup with the amount and a date
+   (today). Tap **Mark paid**. The job now says *Paid on …* with **Undo paid**.
+5. **Worker:** pull the **↻** button. **My Earnings** shows *Paid* = the amount and *Still owed ₹0*.
+6. **Admin:** **Undo paid** → confirm → it goes back to *Not paid yet*. Worker's screen follows after a refresh.
+7. **Pay lock:** mark the job paid again. Open the project (Dashboard → ⋮ → Edit). In **Assign crew**, that
+   worker's pay box is **greyed out** with *"🔒 Paid — locked"* and a note. Change something else (for
+   example the notes) and Save — it works, and the pay stays the same.
+8. **Change a paid amount (the proper way):** Workers → **Undo paid** → edit the project and change the pay →
+   Save → Workers → **Mark paid** again.
+9. **Mark all owed:** finish two jobs as the worker, then on the worker's card tap **Mark all owed as paid (2)**
+   → pick a date → both become paid with the same date.
+10. **Delete warning:** delete a project whose crew job is paid. After the first "are you sure", a second
+    message says *"…already marked PAID. Deleting the project also deletes those pay records. Delete anyway?"*
+    Choose **Cancel** to keep it.
+
+### Rules worth knowing
+- **Nobody but you can mark anything paid.** A worker cannot mark paid, change a pay amount, or see another
+  worker's earnings. The database refuses — not just the screen.
+- **Paid jobs are closed for the worker.** After you mark a job paid, the worker can no longer move it out of
+  Done (their screen just says *"Closed"*, nothing about money).
+- **Repeating is safe.** Pressing **Mark paid** twice, or having two windows open, never changes a date or
+  counts a payment twice. If a worker re-opened a job just before you pressed the button, that job is
+  skipped and you are told.
+- **Months:** a finished job counts in the month it was marked **Done**, by **India time**. Jobs finished
+  before Phase 4 have no "done" time, so they use the **shoot date** (then the deadline). Jobs with no date
+  at all sit under **No date**.
+- **Deleting a project deletes its crew jobs, paid ones too.** That is why the extra warning exists. If you
+  want to keep pay history for a project you no longer need, don't delete it — change its status instead.
+- A deactivated worker's money still shows on their card, so you can still pay what you owe them.
+
+### If something goes wrong
+| You see | What it means / what to do |
+|---|---|
+| Popup says *"Only a job that is Done can be marked paid."* | The worker has not marked it Done (or re-opened it). Wait for them, then try again. |
+| Popup says *"…Nothing was changed — those jobs are no longer Done, or were already paid"* | Someone changed it just before you. The list refreshed; look at it and try again. |
+| Saving a project says *"This job is already paid, so its pay amount is locked"* | You have an old copy of the app open. Hard-refresh (Ctrl + Shift + R). The pay box will be locked. Use **Undo paid** first if the amount really must change. |
+| Pay box is greyed out with 🔒 | That job is paid. See step 8 above. |
+| Workers page shows *"The database needs PART 4…"* or a table error | Run PART 4 and PART 5 (see above), then tap **↻ Refresh**. |
+| Popup says *"No connection to the server"* | Offline. Nothing was changed. Try again when online. |
+| Worker's **My Earnings** looks out of date | They need to tap **↻** (or reopen the app). It also refreshes by itself every minute. |
+| Worker says a number is wrong | Open **Crew jobs**, filter by that worker, and compare. Only **Done** jobs count as earned. |
+
+### What changed (Phase 5)
+- Database (PART 5): one safety trigger on `worker_tasks`. It refuses to mark a not-Done job paid, locks the pay
+  amount of a paid job, always gives a paid job a paid date (today, India time, if none is given) and clears the
+  date when you undo. No new permissions: workers still cannot write to the table.
+- Worker app: **My Earnings** tab (money rules in `js/worker/earningsCalc.js`, adds up in paise so there are no
+  rounding errors).
+- Admin: earnings per worker, mark paid / undo / mark all owed, Any-payment filter, crew-wide total,
+  locked pay boxes in the project form, delete warning for paid crew jobs.
+- The money rules are in one file and used by both screens, so the worker and admin always agree.

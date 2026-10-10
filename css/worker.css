@@ -244,6 +244,40 @@
   .wa-cal-mark-deadline { align-self: flex-start; }
 }
 
+/* ---------- My Earnings (Phase 5) ---------- */
+.wa-earn-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+.wa-earn-tile {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; min-width: 0;
+}
+.wa-earn-tile.is-owed { border-color: var(--accent); background: rgba(201, 162, 75, 0.10); }
+.wa-earn-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-family: var(--font-display); }
+.wa-earn-value { font-size: 22px; font-weight: 600; margin-top: 4px; word-break: break-word; }
+.wa-earn-green { color: var(--green); }
+.wa-earn-note { font-size: 12.5px; margin: 0 0 16px; }
+
+.wa-earn-month {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 8px; overflow: hidden;
+}
+.wa-earn-month > summary {
+  list-style: none; cursor: pointer; padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.wa-earn-month > summary::-webkit-details-marker { display: none; }
+.wa-earn-month-name { font-weight: 600; font-size: 14.5px; }
+.wa-earn-month-meta { font-size: 13px; color: var(--muted); }
+.wa-earn-month-body { padding: 0 14px 12px; border-top: 1px solid var(--border); }
+.wa-earn-month-split { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); padding: 10px 0 4px; }
+.wa-earn-month-split b { color: var(--text); font-weight: 600; }
+.wa-earn-job { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+.wa-earn-month-split + .wa-earn-job { border-top: none; }
+.wa-earn-job-main { min-width: 0; flex: 1; }
+.wa-earn-job-title { font-size: 14px; font-weight: 500; word-break: break-word; }
+.wa-earn-job-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.wa-earn-job-side { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.wa-earn-job-amt { font-size: 14px; font-weight: 600; }
+
 @media (min-width: 760px) {
   .wa-shell { padding-bottom: 24px; }
   .wa-tabs {

@@ -13,7 +13,7 @@ import {
 import { trackLinkFor, openLinkShareModal } from '../tracklink.js';
 import { findOrCreateClient } from '../clients.js';
 import { crewSectionHtml, initCrewSection } from '../crewForm.js';
-import { deleteCrewForProject } from '../crew.js';
+import { deleteCrewForProject, paidJobsForProject } from '../crew.js';
 
 let state = { month: '', status: '', priority: '', contentType: '', sort: 'newest' };
 let countdownTimer = null;
@@ -240,8 +240,8 @@ function renderTable() {
     });
     root.querySelectorAll('[data-action="edit"]').forEach((b) => b.addEventListener('click', () => openIncomeModal(b.dataset.id)));
     root.querySelectorAll('[data-action="delete"]').forEach((b) => b.addEventListener('click', () => {
-      openConfirm('Delete this income entry? This action cannot be undone.', async () => {
-        const entry = getIncome().find((x) => x.id === b.dataset.id);
+      // Removes the project for real (after any warnings below).
+      const finishDelete = async (entry, id) => {
         // Workers must not keep a job for a project that no longer exists. Remove
         // their jobs FIRST; if that fails (e.g. offline) keep the project, so
         // nothing is ever left behind on a worker's phone.
@@ -253,10 +253,34 @@ function renderTable() {
             return;
           }
         }
-        saveIncome(getIncome().filter((x) => x.id !== b.dataset.id));
+        saveIncome(getIncome().filter((x) => x.id !== id));
         if (entry?.trackCode) import('../cloud.js').then(({ deleteProjectStatus }) => deleteProjectStatus(entry.trackCode));
         showToast('Entry deleted');
         renderAll();
+      };
+      openConfirm('Delete this income entry? This action cannot be undone.', async () => {
+        const entry = getIncome().find((x) => x.id === b.dataset.id);
+        // Deleting a project also deletes its crew jobs — including any you have
+        // already marked PAID, which would erase that pay record. Ask first.
+        if (entry?.hasCrew) {
+          let paid;
+          try {
+            paid = await paidJobsForProject(entry.id);
+          } catch (err) {
+            showToast("Not deleted — couldn't check the crew's jobs. Check your internet and try again.");
+            return;
+          }
+          if (paid.length) {
+            openConfirm(
+              `${paid.length} crew job${paid.length === 1 ? ' on this project is' : 's on this project are'} already marked PAID. Deleting the project also deletes ${paid.length === 1 ? 'that pay record' : 'those pay records'}. Delete anyway?`,
+              () => finishDelete(entry, b.dataset.id),
+              null,
+              'Delete anyway'
+            );
+            return;
+          }
+        }
+        await finishDelete(entry, b.dataset.id);
       });
     }));
     root.querySelectorAll('[data-action="link"]').forEach((b) => b.addEventListener('click', () => {
