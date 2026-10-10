@@ -42,8 +42,7 @@ export function groupByWorker(tasks) {
 }
 
 // filters: { worker: '' | user_id, status: '' | todo | in_progress | done,
-//            when: '' | 'overdue' | 'upcoming' | 'recent',
-//            pay: '' | 'owed' (Done, not paid yet) | 'paid' }
+//            when: '' | 'overdue' | 'upcoming' | 'recent' }
 // Open jobs first (soonest main date first); finished jobs after, newest first.
 export function filterJobs(tasks, filters, today, now = Date.now()) {
   const f = filters || {};
@@ -56,8 +55,6 @@ export function filterJobs(tasks, filters, today, now = Date.now()) {
       if (t.status === 'done' || !k || dayDiff(k, today) < 0) return false;
     }
     if (f.when === 'recent' && !wasMarkedDoneRecently(t, now)) return false;
-    if (f.pay === 'owed' && !(t.status === 'done' && t.pay_status !== 'paid')) return false;
-    if (f.pay === 'paid' && t.pay_status !== 'paid') return false;
     return true;
   });
   const open = out.filter((t) => t.status !== 'done');

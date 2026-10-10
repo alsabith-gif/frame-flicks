@@ -6,15 +6,8 @@
 // type over it any time. Location / shoot time / notes for the crew are shared
 // by everyone on the project. Nothing is written until you press Save on the
 // project; then the jobs appear on each worker's phone.
-//
-// PAY HISTORY: once a job is marked PAID (Workers page), its pay box is locked
-// here — read-only, never touched by "Reset pay to suggested" or a price change,
-// and its worker cannot be swapped or removed. To change a paid amount: undo the
-// payment on the Workers page, change it here, then mark it paid again. (The
-// database refuses a changed amount on a paid job too, so this cannot be bypassed.)
 
 import { escHtml, currency } from './format.js';
-import { fmtDay } from './worker/workerView.js';
 import {
   CREW_ROLES, CREW_ROLE_LABEL, suggestPays, validateCrew, buildTaskPayloads, diffCrew,
   loadWorkers, loadCrewForProject, saveCrewChanges,
@@ -61,7 +54,6 @@ export function initCrewSection(body, { projectId, distribution, getAmount, getR
       amount: getAmount(), distribution, referral: getReferral(), roles: st.rows.map((r) => r.role),
     });
     st.rows.forEach((r, i) => {
-      if (r.locked) { r.suggested = 0; return; }      // a paid amount is never recalculated
       r.suggested = sug[i];
       if (!r.payTouched) r.pay = sug[i] ? String(sug[i]) : '';
     });
@@ -76,16 +68,15 @@ export function initCrewSection(body, { projectId, distribution, getAmount, getR
   function render() {
     const rowsEl = $('#crewRows');
     rowsEl.innerHTML = st.rows.map((r, i) => `
-      <div class="crew-row${r.locked ? ' is-locked' : ''}" data-i="${i}">
-        <select class="crew-worker" aria-label="Worker"${r.locked ? ' disabled' : ''}>${workerOptions(r)}</select>
+      <div class="crew-row" data-i="${i}">
+        <select class="crew-worker" aria-label="Worker">${workerOptions(r)}</select>
         <select class="crew-role" aria-label="Role">${CREW_ROLES.map((x) => `<option value="${x}" ${r.role === x ? 'selected' : ''}>${CREW_ROLE_LABEL[x]}</option>`).join('')}</select>
         <div class="crew-pay-wrap">
-          <input type="number" class="crew-pay" min="0" step="1" inputmode="decimal" placeholder="Pay ₹" aria-label="Pay in rupees" value="${escHtml(r.pay)}"${r.locked ? ' readonly' : ''}>
-          <span class="crew-sug">${r.locked ? '🔒 Paid — locked' : (r.suggested ? `Suggested ${escHtml(currency(r.suggested))}` : '')}</span>
+          <input type="number" class="crew-pay" min="0" step="1" inputmode="decimal" placeholder="Pay ₹" aria-label="Pay in rupees" value="${escHtml(r.pay)}">
+          <span class="crew-sug">${r.suggested ? `Suggested ${escHtml(currency(r.suggested))}` : ''}</span>
         </div>
-        <button type="button" class="btn btn-icon btn-sm crew-remove" title="${r.locked ? 'Paid — undo the payment first' : 'Remove from this project'}" aria-label="Remove"${r.locked ? ' disabled' : ''}>✕</button>
-      </div>
-      ${r.locked ? `<p class="field-hint crew-lock-note">🔒 ${escHtml(nameOf(r.worker_id))} has been paid${r.paidOn ? ` on ${escHtml(fmtDay(r.paidOn))}` : ''}, so this pay amount can't be changed here. To change it: open <b>Workers</b> → find this job → <b>Undo paid</b> → change it here → mark it paid again.</p>` : ''}`).join('');
+        <button type="button" class="btn btn-icon btn-sm crew-remove" title="Remove from this project" aria-label="Remove">✕</button>
+      </div>`).join('');
     $('#crewShared').style.display = st.rows.length ? '' : 'none';
     $('#crewActions').style.display = st.loaded ? '' : 'none';
     $('#crewSuggestBtn').style.display = st.rows.length ? '' : 'none';
@@ -116,18 +107,16 @@ export function initCrewSection(body, { projectId, distribution, getAmount, getR
     $('#crewRows').addEventListener('input', (e) => {
       if (!e.target.classList.contains('crew-pay')) return;
       const r = st.rows[+e.target.closest('.crew-row').dataset.i];
-      if (r.locked) return;                              // paid: never editable
       r.pay = e.target.value; r.payTouched = true;      // typed over the suggestion: keep it
     });
     $('#crewRows').addEventListener('click', (e) => {
       const b = e.target.closest('.crew-remove'); if (!b) return;
-      if (st.rows[+b.closest('.crew-row').dataset.i].locked) return;    // paid: cannot be removed
       st.rows.splice(+b.closest('.crew-row').dataset.i, 1);
       recalcSuggestions(); render();
     });
     $('#crewAddBtn').addEventListener('click', addRow);
     $('#crewSuggestBtn').addEventListener('click', () => {
-      st.rows.forEach((r) => { if (!r.locked) r.payTouched = false; });
+      st.rows.forEach((r) => { r.payTouched = false; });
       recalcSuggestions(); render();
     });
   }
@@ -144,7 +133,6 @@ export function initCrewSection(body, { projectId, distribution, getAmount, getR
       st.rows = tasks.map((t) => ({
         worker_id: t.worker_id, role: t.role, pay: String(Number(t.pay_amount) || 0),
         payTouched: true, roleTouched: true, suggested: 0,
-        locked: t.pay_status === 'paid', paidOn: t.paid_on || null,
       }));
       if (tasks[0]) {
         $('#crewLocation').value = tasks[0].location || '';

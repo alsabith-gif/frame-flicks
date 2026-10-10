@@ -125,13 +125,6 @@ export async function loadCrewForProject(projectId) {
   return data || [];
 }
 
-// The crew jobs of a project that the admin has already marked PAID. Used to warn
-// before a project (and so its pay records) is deleted.
-export async function paidJobsForProject(projectId) {
-  const rows = await loadCrewForProject(projectId);
-  return rows.filter((r) => r.pay_status === 'paid');
-}
-
 export async function saveCrewChanges(projectId, { toUpsert, toDelete }) {
   if (toUpsert.length) {
     const { error } = await supabase.from('worker_tasks').upsert(toUpsert, { onConflict: 'project_id,worker_id' });
