@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Frame Flicks — make notification keys</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; line-height: 1.5; color: #1a1a1a; }
+  h1 { font-size: 1.3rem; }
+  button { font-size: 1rem; padding: 10px 16px; border-radius: 8px; border: 1px solid #888; background: #f3f3f3; cursor: pointer; }
+  button.main { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .box { border: 1px solid #ccc; border-radius: 10px; padding: 12px; margin: 14px 0; }
+  .label { font-weight: 600; margin-bottom: 4px; }
+  code { display: block; word-break: break-all; background: #f6f6f6; padding: 8px; border-radius: 6px; user-select: all; }
+  .warn { background: #fff4e5; border-color: #f0b35a; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+<h1>Make your notification keys</h1>
+<p>This page makes two keys that your app needs to send notifications. It works completely on this device — nothing is sent anywhere.</p>
+<p><button class="main" id="go">Make my keys</button></p>
+
+<div id="out" class="hide">
+  <div class="box">
+    <div class="label">1. VAPID_PUBLIC_KEY</div>
+    <code id="pub"></code>
+    <p><button data-copy="pub">Copy</button></p>
+  </div>
+  <div class="box warn">
+    <div class="label">2. VAPID_PRIVATE_KEY — keep this secret</div>
+    <code id="priv"></code>
+    <p><button data-copy="priv">Copy</button></p>
+    <p>Never put this key in the app files, in a chat, or in an email. It goes only into Supabase (see SETUP.md).</p>
+  </div>
+  <p>Make the keys <b>once</b>. If you make new ones later, every phone has to turn notifications on again.</p>
+</div>
+<p id="err" class="hide"></p>
+
+<script>
+function b64url(bytes) {
+  let s = ''; for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function makeVapidKeys() {
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const pub = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));   // 65 bytes, starts with 4
+  const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey);                  // jwk.d = 32-byte private key
+  return { publicKey: b64url(pub), privateKey: jwk.d };
+}
+if (typeof document !== 'undefined') {
+  document.getElementById('go').addEventListener('click', async () => {
+    try {
+      const k = await makeVapidKeys();
+      document.getElementById('pub').textContent = k.publicKey;
+      document.getElementById('priv').textContent = k.privateKey;
+      document.getElementById('out').classList.remove('hide');
+      document.getElementById('err').classList.add('hide');
+    } catch (e) {
+      const el = document.getElementById('err'); el.textContent = 'Your browser could not make the keys. Please try Chrome.'; el.classList.remove('hide');
+    }
+  });
+  document.querySelectorAll('[data-copy]').forEach((btn) => btn.addEventListener('click', async () => {
+    const text = document.getElementById(btn.dataset.copy).textContent;
+    try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; } catch { btn.textContent = 'Press and hold the key to copy it'; }
+  }));
+}
+</script>
+</body>
+</html>

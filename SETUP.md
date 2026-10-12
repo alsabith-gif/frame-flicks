@@ -102,16 +102,12 @@ handy when you're sharing in person or on a call instead of over text.
 
 ## Push notifications (calendar reminders)
 
-One-time setup, about 10 minutes:
+Notifications are now set up by **Phase 6** (further down this file). Ignore the old command-line steps
+and do not run `supabase/push-setup.sql` any more — PART 6A and PART 6B of `supabase/worker-setup.sql`
+replace it.
 
-1. **Keys** — run `npx web-push generate-vapid-keys`. Paste the *public* key into `VAPID_PUBLIC_KEY` in `js/config.js`.
-2. **Tables** — Supabase → SQL Editor → run `supabase/push-setup.sql` (first part only, up to the cron section).
-3. **Function** — deploy `supabase/functions/send-reminders` (`supabase functions deploy send-reminders`), then set secrets:
-   `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:you@email.com CRON_SECRET=<any long random text>`
-4. **Schedule** — Database → Extensions: enable `pg_cron` and `pg_net`. Run the `cron.schedule` part of `push-setup.sql`, replacing `YOUR_CRON_SECRET` with the same text as above. It checks every minute.
-5. **Phone** — deploy the app over HTTPS. On iPhone: Safari → Share → Add to Home Screen, open it from the icon, then Settings → Notifications → turn on and tap *Send test notification*.
-
-In Settings → Notifications you choose, per event type (Shoot days ⭐, Deadlines, Payments, Meetings), whether it notifies, the day-before time, the same-day time, and a "before start time" reminder. Add shoot days from Calendar → + Add Event (Shoot day) or the new Shoot Date field on each project.
+In Settings → Notifications (admin) you still choose, per event type (Shoot days, Deadlines, Payments,
+Meetings), whether it notifies, the day-before time, the same-day time, and a "before start time" reminder.
 
 ## Invoice Maker & Price Distributor
 
@@ -550,3 +546,111 @@ Wait 2 minutes, hard-refresh (Ctrl + Shift + R). The login screen must say
 - Admin: earnings per worker, mark paid / undo / mark all owed, Any-payment filter, crew-wide total,
   locked pay boxes in the project form, delete warning for paid crew jobs.
 - The money rules are in one file and used by both screens, so the worker and admin always agree.
+
+
+---
+
+## Phase 6 — notifications for workers (and a proper setup for yours)
+
+What you get: a worker's phone buzzes the evening before a shoot and 1 hour before it, the evening before a
+deadline and on the day, and whenever you add, change or remove one of their jobs. You get your own calendar
+reminders as before. A notification **never** shows pay, a client's phone number or a project price.
+Times are India time. If you deactivate a worker, they stop getting notifications at once.
+
+This phase has more steps than the others, because notifications need a "sender" running in Supabase.
+Do them **in this order**. Nothing in your app breaks if you stop half way — notifications just stay off.
+
+### 1. Run PART 6A
+Supabase → **SQL Editor** → **New query** → paste the whole of `phase6-part6a.sql` (or the PART 6A section of
+`supabase/worker-setup.sql`) → **Run**. The last table it shows should list four rows (policies) and no error.
+Safe to run twice.
+
+### 2. Make your two notification keys
+1. On your computer, unzip the app folder and **double-click `vapid-keys.html`**. It opens in Chrome.
+2. Click **Make my keys**. Two long lines of text appear: a *public* key and a *private* key.
+3. Keep this page open. (It works only on your computer; nothing is sent anywhere.)
+4. The **private** key is a secret. Never put it in the app files, a chat or an email.
+5. Make the keys **once**. If you ever make new ones, every phone must turn notifications on again.
+
+### 3. Save four secrets in Supabase
+Supabase → **Edge Functions** → **Secrets** (in some versions: **Edge Functions → Manage secrets**).
+Click **Add new secret** for each of these (name on the left exactly as written, value on the right):
+
+| Name | Value |
+|---|---|
+| `VAPID_PUBLIC_KEY` | the public key from step 2 |
+| `VAPID_PRIVATE_KEY` | the private key from step 2 |
+| `VAPID_SUBJECT` | the word `mailto:` followed by **your own email**, e.g. `mailto:you@example.com` (no space) |
+| `CRON_SECRET` | any long made-up text (30+ letters and numbers, no spaces). Write it down — you need it again in step 6 |
+
+Click **Save** after adding them.
+
+### 4. Deploy the sender function
+Same as you did for the worker function in Phase 2, step 5:
+1. **Edge Functions** → **Deploy a new function** → **Via Editor**. Name it exactly `send-reminders`.
+   (If a function with this name already exists, open it instead and replace its code.)
+2. Delete the sample code, paste the whole of `supabase/functions/send-reminders/index.ts`, click **Deploy**.
+3. Open the function's settings and turn **Verify JWT** **OFF**, then save. (The sender checks the secret
+   itself; the every-minute call has no login.)
+
+### 5. Turn on the two helpers
+Supabase → **Database** → **Extensions** → search **pg_cron** → switch it on. Search **pg_net** → switch it on.
+
+### 6. Run PART 6B (starts the every-minute sender)
+1. Open `phase6-part6b.sql` in Notepad (or the PART 6B section of `worker-setup.sql`).
+2. Replace `YOUR_CRON_SECRET` with the **same** text you saved as `CRON_SECRET`. Keep the quote marks around it.
+3. Supabase → **SQL Editor** → paste → **Run**. The last result must show one row with `active = true`.
+   Safe to run twice (it replaces the old schedule).
+
+### 7. Upload the new app files (GitHub, same as before)
+Upload the files from the zip(s) over the old ones. Wait for Cloudflare to finish, then hard-refresh
+(**Ctrl + Shift + R**). The login screen should say **Phase 6 · notifications**.
+
+### 8. Test it
+**Your own phone/browser first (admin):**
+1. Log in as admin → **Settings** → Notifications → turn on → allow when asked → **Send test notification**.
+   A notification should appear within a few seconds.
+
+**A worker (use your test worker's phone):**
+1. Android: open the app in Chrome and log in as the worker. **iPhone:** open the site in Safari → **Share** →
+   **Add to Home Screen** → open **Frame Flicks from the Home Screen icon** (this is required by Apple) and log in.
+2. **Settings** → **Notifications** → **Turn on notifications on this phone** → tap **Allow**.
+3. Tap **Send me a test**. It should arrive within a few seconds.
+4. As admin, assign that worker a new job (or change the date of one). Within about a minute the worker's phone
+   shows **New job for you** / **Job updated**. Tap it: the app opens on **My Work**.
+5. In the worker's Settings, switch **Job changes** off, change the job again as admin → **no** notification.
+6. Deactivate the test worker on the Workers page, change their job → **no** notification. Reactivate them after.
+7. Check that no notification ever shows a pay amount, phone number or price.
+
+### If something goes wrong
+| What you see | What to do |
+|---|---|
+| Turn-on button says "not set up on the server" | Steps 3 and 4: the four secrets saved, function deployed. Then try again. |
+| "Could not save this device" | Run PART 6A (step 1). |
+| Test says "no device registered" | Turn notifications on for that phone first (step 8). |
+| Test works but real reminders never come | Step 5 (extensions on) and step 6 (secret text identical to `CRON_SECRET`). In SQL Editor run `select status, return_message, start_time from cron.job_run_details order by start_time desc limit 5;` — it should show `succeeded` every minute. Also check Edge Functions → send-reminders → **Logs**. |
+| Logs say "forbidden" (403) | The text in PART 6B is not the same as `CRON_SECRET`. Fix it and run PART 6B again. |
+| Logs say "VAPID keys are not saved yet" / "not valid" | Step 3: re-paste the keys with no spaces or quotes; `VAPID_SUBJECT` must start with `mailto:`. |
+| iPhone shows "Add to Home Screen" instead of a button | Open the app from the Home Screen icon, not Safari. Needs iOS 16.4 or newer. |
+| "Notifications are blocked" | Phone Settings → Notifications → Frame Flicks (or Chrome → site settings) → Allow. |
+| A worker got nothing after being re-activated | They must tap **Turn on notifications on this phone** again (their old phone is forgotten when deactivated). |
+| Everything stopped after you made new keys | Every phone must turn notifications off and on again. |
+
+### What changed (Phase 6)
+- Database (PART 6A): tables for registered phones, waiting notifications and each worker's choices, all private
+  per person (a worker sees only their own; only the admin app writes the admin's reminders). The database itself
+  builds a worker's reminders and alerts, removes them when a job is done, deleted or the worker is deactivated,
+  and never puts pay, client phone or price into any text. PART 6B starts the every-minute sender.
+- Sender function (`send-reminders`): claims each notification before sending (no double sends), skips anyone
+  deactivated, only opens pages inside the app, forgets phones that have expired.
+- Worker app: **Settings → Notifications** (turn on for this phone, three choices, test, turn off), and tapping a
+  notification opens the right screen.
+- `vapid-keys.html`: makes your keys on your own computer. The public key is now served by the function, so you
+  no longer paste anything into `js/config.js`.
+- `supabase/push-setup.sql` is now just a note: do not run it.
+
+### What could not be tested here (please check by hand — step 8)
+The database, the sender function, the encryption and the worker screens were tested with simulated accounts,
+a real database and a fake phone. A real notification reaching a real phone through Google/Apple could **not** be
+tested from here, so step 8 is the real proof. Notification delivery on iPhone also depends on Apple's rules
+(Home Screen app, iOS 16.4+).

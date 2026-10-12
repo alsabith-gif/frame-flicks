@@ -475,3 +475,386 @@ select tgname from pg_trigger
 where tgrelid = 'public.worker_tasks'::regclass and not tgisinternal order by tgname;
 select policyname, cmd, roles from pg_policies
 where schemaname = 'public' and tablename = 'worker_tasks' order by policyname;
+
+
+-- =====================================================================
+-- PART 6A — push notifications for workers   (Phase 6)
+-- Run this whole part in Supabase → SQL Editor. Safe to run twice.
+-- (Part 6B, the every-minute schedule, is separate and comes after you
+--  have deployed the send-reminders function — see SETUP.md.)
+--
+-- What the DATABASE does here (so it holds even if an old copy of the app is open):
+--   • stores each phone/browser a person turned notifications on for
+--   • builds a worker's reminders itself, from their own jobs (a worker's phone
+--     never has to be open for them to be scheduled)
+--   • sends an alert when a job is assigned, changed or removed
+--   • stops everything for a worker the moment they are deactivated
+-- Notification text NEVER contains pay, client phone or the project price.
+-- Times are India time (Asia/Kolkata).
+-- =====================================================================
+
+create table if not exists public.push_subscriptions (
+  endpoint   text primary key,
+  user_id    uuid not null default auth.uid(),
+  p256dh     text not null,
+  auth       text not null,
+  user_agent text,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.push_reminders (
+  id         text primary key,
+  user_id    uuid not null default auth.uid(),
+  type       text,
+  fire_at    timestamptz not null,
+  title      text not null,
+  body       text,
+  url        text,
+  tag        text,
+  sent       boolean not null default false,
+  created_at timestamptz default now()
+);
+alter table public.push_reminders add column if not exists task_id uuid;   -- the job a reminder belongs to (workers)
+create index if not exists push_reminders_due  on public.push_reminders (sent, fire_at);
+create index if not exists push_reminders_task on public.push_reminders (task_id);
+create index if not exists push_subscriptions_user on public.push_subscriptions (user_id);
+
+-- Each worker's own notification choices (they change them in My Work → Settings).
+create table if not exists public.worker_notif_prefs (
+  user_id        uuid primary key references auth.users (id) on delete cascade,
+  enabled        boolean not null default true,    -- master switch
+  shoot_reminders boolean not null default true,   -- "shoot tomorrow" / "shoot soon"
+  due_reminders  boolean not null default true,    -- "due tomorrow" / "due today"
+  change_alerts  boolean not null default true,    -- new job / changed / removed
+  updated_at     timestamptz not null default now()
+);
+
+alter table public.push_subscriptions enable row level security;
+alter table public.push_reminders enable row level security;
+alter table public.worker_notif_prefs enable row level security;
+revoke all on public.push_subscriptions, public.push_reminders, public.worker_notif_prefs from anon;
+
+do $$
+declare p record;
+begin
+  for p in select tablename, policyname from pg_policies
+            where schemaname = 'public'
+              and tablename in ('push_subscriptions', 'push_reminders', 'worker_notif_prefs') loop
+    execute format('drop policy %I on public.%I', p.policyname, p.tablename);
+  end loop;
+end $$;
+
+-- A person can only ever touch THEIR OWN phones…
+create policy "push_subscriptions: own" on public.push_subscriptions
+  for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+-- …and only read their own reminders. Only the admin app writes reminders
+-- (its own calendar ones); a worker's reminders are written by the database.
+create policy "push_reminders: read own" on public.push_reminders
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "push_reminders: admin writes own" on public.push_reminders
+  for all to authenticated
+  using (user_id = (select auth.uid()) and (select public.is_admin()))
+  with check (user_id = (select auth.uid()) and (select public.is_admin()));
+
+-- Workers read their own choices; they change them only through the function below.
+create policy "worker_notif_prefs: read own" on public.worker_notif_prefs
+  for select to authenticated using (user_id = (select auth.uid()));
+
+-- Strips anything odd from text that goes into a notification (control characters,
+-- long text). Pay and phone numbers are never passed in at all.
+create or replace function public.notif_clean(p text, p_max int default 80)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select left(btrim(regexp_replace(coalesce(p, ''), '[[:cntrl:]]+', ' ', 'g')), p_max);
+$$;
+
+-- Time + place line used in worker notifications, e.g. "Sat 18 Oct, 10:30 AM · Kochi"
+create or replace function public.notif_when(p_date date, p_time time, p_loc text)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select concat_ws(' · ',
+    nullif(concat_ws(', ',
+      case when p_date is not null then to_char(p_date, 'Dy DD Mon') end,
+      case when p_time is not null then to_char(p_time, 'FMHH12:MI AM') end), ''),
+    nullif(public.notif_clean(p_loc, 60), ''));
+$$;
+
+-- Does this worker want this kind of notification right now? (active + switches)
+create or replace function public.worker_wants(p_user uuid, p_kind text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.profiles pr where pr.user_id = p_user and pr.role = 'worker' and pr.active)
+     and coalesce((select case p_kind
+                            when 'shoot'  then n.enabled and n.shoot_reminders
+                            when 'due'    then n.enabled and n.due_reminders
+                            else               n.enabled and n.change_alerts end
+                     from public.worker_notif_prefs n where n.user_id = p_user), true);
+$$;
+revoke all on function public.worker_wants(uuid, text) from public, anon, authenticated;
+
+-- (Re)builds the FUTURE reminders of ONE job. Reminders already sent are left alone.
+--   shoot: 6 PM the evening before, and 1 hour before (if a time is set)
+--   due:   6 PM the evening before the deadline, and 9 AM on the day
+-- A finished job, a removed job, or a worker who is off/inactive gets none.
+create or replace function public.rebuild_task_reminders(p_task uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  t public.worker_tasks%rowtype;
+  v_title text;
+  v_url text;
+  v_at timestamptz;
+begin
+  delete from public.push_reminders
+   where task_id = p_task and not sent and type in ('worker-shoot', 'worker-due');
+
+  select * into t from public.worker_tasks where id = p_task;
+  if not found or t.status = 'done' then return; end if;
+
+  v_title := public.notif_clean(t.title, 60);
+  v_url := './index.html?page=work';
+
+  if t.shoot_date is not null and public.worker_wants(t.worker_id, 'shoot') then
+    v_at := ((t.shoot_date - 1) + time '18:00') at time zone 'Asia/Kolkata';
+    if v_at > now() then
+      insert into public.push_reminders (id, user_id, type, fire_at, title, body, url, tag, task_id)
+      values ('wt:' || t.id || ':shoot-eve:' || extract(epoch from v_at)::bigint, t.worker_id, 'worker-shoot', v_at,
+              'Shoot tomorrow', v_title || ' — ' || public.notif_when(t.shoot_date, t.shoot_time, t.location),
+              v_url, 'wt-' || t.id || '-shoot-eve', t.id)
+      on conflict (id) do nothing;
+    end if;
+    if t.shoot_time is not null then
+      v_at := ((t.shoot_date + t.shoot_time) - interval '1 hour') at time zone 'Asia/Kolkata';
+      if v_at > now() then
+        insert into public.push_reminders (id, user_id, type, fire_at, title, body, url, tag, task_id)
+        values ('wt:' || t.id || ':shoot-soon:' || extract(epoch from v_at)::bigint, t.worker_id, 'worker-shoot', v_at,
+                'Shoot in 1 hour', v_title || ' — ' || public.notif_when(t.shoot_date, t.shoot_time, t.location),
+                v_url, 'wt-' || t.id || '-shoot-soon', t.id)
+        on conflict (id) do nothing;
+      end if;
+    end if;
+  end if;
+
+  if t.due_date is not null and public.worker_wants(t.worker_id, 'due') then
+    v_at := ((t.due_date - 1) + time '18:00') at time zone 'Asia/Kolkata';
+    if v_at > now() then
+      insert into public.push_reminders (id, user_id, type, fire_at, title, body, url, tag, task_id)
+      values ('wt:' || t.id || ':due-eve:' || extract(epoch from v_at)::bigint, t.worker_id, 'worker-due', v_at,
+              'Due tomorrow', v_title || ' — due ' || to_char(t.due_date, 'Dy DD Mon'),
+              v_url, 'wt-' || t.id || '-due-eve', t.id)
+      on conflict (id) do nothing;
+    end if;
+    v_at := (t.due_date + time '09:00') at time zone 'Asia/Kolkata';
+    if v_at > now() then
+      insert into public.push_reminders (id, user_id, type, fire_at, title, body, url, tag, task_id)
+      values ('wt:' || t.id || ':due-day:' || extract(epoch from v_at)::bigint, t.worker_id, 'worker-due', v_at,
+              'Due today', v_title || ' is due today',
+              v_url, 'wt-' || t.id || '-due-day', t.id)
+      on conflict (id) do nothing;
+    end if;
+  end if;
+end;
+$$;
+revoke all on function public.rebuild_task_reminders(uuid) from public, anon, authenticated;
+
+create or replace function public.rebuild_worker_reminders(p_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare r record;
+begin
+  -- Unsent reminders of jobs that no longer exist (or are not this worker's) go too.
+  delete from public.push_reminders
+   where user_id = p_user and not sent and type in ('worker-shoot', 'worker-due')
+     and (task_id is null or not exists (select 1 from public.worker_tasks w where w.id = task_id and w.worker_id = p_user));
+  for r in select id from public.worker_tasks where worker_id = p_user loop
+    perform public.rebuild_task_reminders(r.id);
+  end loop;
+end;
+$$;
+revoke all on function public.rebuild_worker_reminders(uuid) from public, anon, authenticated;
+
+-- Immediate alert (fires on the next minute tick). Same job + same kind within a
+-- minute replaces itself, so a quick double-save never sends two.
+create or replace function public.push_worker_alert(p_user uuid, p_task uuid, p_kind text, p_title text, p_body text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.worker_wants(p_user, 'change') then return; end if;
+  insert into public.push_reminders (id, user_id, type, fire_at, title, body, url, tag, task_id)
+  values ('wa:' || coalesce(p_task::text, 'x') || ':' || p_kind || ':' || extract(epoch from date_trunc('minute', now()))::bigint,
+          p_user, 'worker-alert', now(), p_title, p_body,
+          './index.html?page=work',
+          'wa-' || coalesce(p_task::text, 'x') || '-' || p_kind, p_task)
+  on conflict (id) do update set title = excluded.title, body = excluded.body, sent = false, fire_at = excluded.fire_at;
+end;
+$$;
+revoke all on function public.push_worker_alert(uuid, uuid, text, text, text) from public, anon, authenticated;
+
+create or replace function public.worker_tasks_notify()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    perform public.push_worker_alert(new.worker_id, new.id, 'assigned', 'New job for you',
+      public.notif_clean(new.title, 60) || coalesce(' — ' || nullif(public.notif_when(new.shoot_date, new.shoot_time, new.location), ''), ''));
+    perform public.rebuild_task_reminders(new.id);
+
+  elsif tg_op = 'UPDATE' then
+    if new.worker_id is distinct from old.worker_id then
+      delete from public.push_reminders where task_id = old.id and not sent and type in ('worker-shoot', 'worker-due');
+      perform public.push_worker_alert(old.worker_id, old.id, 'removed', 'Job removed',
+        public.notif_clean(old.title, 60) || ' is no longer assigned to you');
+      perform public.push_worker_alert(new.worker_id, new.id, 'assigned', 'New job for you',
+        public.notif_clean(new.title, 60) || coalesce(' — ' || nullif(public.notif_when(new.shoot_date, new.shoot_time, new.location), ''), ''));
+    elsif (new.title, new.shoot_date, new.shoot_time, new.location, new.due_date, new.notes)
+          is distinct from (old.title, old.shoot_date, old.shoot_time, old.location, old.due_date, old.notes) then
+      perform public.push_worker_alert(new.worker_id, new.id, 'changed', 'Job updated',
+        public.notif_clean(new.title, 60) || coalesce(' — ' || nullif(public.notif_when(new.shoot_date, new.shoot_time, new.location), ''), ''));
+    end if;
+    -- dates, title or status moved: rebuild this job's future reminders
+    if (new.shoot_date, new.shoot_time, new.due_date, new.title, new.location, new.status, new.worker_id)
+       is distinct from (old.shoot_date, old.shoot_time, old.due_date, old.title, old.location, old.status, old.worker_id) then
+      perform public.rebuild_task_reminders(new.id);
+    end if;
+
+  elsif tg_op = 'DELETE' then
+    delete from public.push_reminders where task_id = old.id and not sent and type in ('worker-shoot', 'worker-due');
+    perform public.push_worker_alert(old.worker_id, old.id, 'removed', 'Job removed',
+      public.notif_clean(old.title, 60) || ' is no longer assigned to you');
+    return old;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.worker_tasks_notify() from public, anon, authenticated;
+
+drop trigger if exists worker_tasks_notify on public.worker_tasks;
+create trigger worker_tasks_notify
+  after insert or update or delete on public.worker_tasks
+  for each row execute function public.worker_tasks_notify();
+
+-- Deactivating a worker: their waiting reminders AND their registered phones are
+-- deleted at once, so nothing more can reach them. Re-activating rebuilds reminders
+-- (they turn notifications on again themselves on their phone).
+create or replace function public.profiles_notify_active()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.role = 'worker' and new.active is distinct from old.active then
+    if not new.active then
+      delete from public.push_reminders where user_id = new.user_id and not sent;
+      delete from public.push_subscriptions where user_id = new.user_id;
+    else
+      perform public.rebuild_worker_reminders(new.user_id);
+    end if;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.profiles_notify_active() from public, anon, authenticated;
+
+drop trigger if exists profiles_notify_active on public.profiles;
+create trigger profiles_notify_active
+  after update on public.profiles
+  for each row execute function public.profiles_notify_active();
+
+-- The ONLY way a worker changes their notification choices.
+create or replace function public.worker_set_notif_prefs(
+  p_enabled boolean, p_shoot boolean, p_due boolean, p_changes boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'You are not signed in.' using errcode = '28000';
+  end if;
+  if not public.is_active_worker() then
+    raise exception 'This account cannot change notification settings.' using errcode = '42501';
+  end if;
+  insert into public.worker_notif_prefs (user_id, enabled, shoot_reminders, due_reminders, change_alerts, updated_at)
+  values (v_uid, coalesce(p_enabled, true), coalesce(p_shoot, true), coalesce(p_due, true), coalesce(p_changes, true), now())
+  on conflict (user_id) do update
+    set enabled = excluded.enabled, shoot_reminders = excluded.shoot_reminders,
+        due_reminders = excluded.due_reminders, change_alerts = excluded.change_alerts, updated_at = now();
+  perform public.rebuild_worker_reminders(v_uid);
+  return jsonb_build_object('enabled', coalesce(p_enabled, true), 'shoot_reminders', coalesce(p_shoot, true),
+                            'due_reminders', coalesce(p_due, true), 'change_alerts', coalesce(p_changes, true));
+end;
+$$;
+revoke all on function public.worker_set_notif_prefs(boolean, boolean, boolean, boolean) from public, anon, authenticated;
+grant execute on function public.worker_set_notif_prefs(boolean, boolean, boolean, boolean) to authenticated;
+
+-- Reminders for jobs that already exist.
+do $$
+declare r record;
+begin
+  for r in select distinct worker_id from public.worker_tasks loop
+    perform public.rebuild_worker_reminders(r.worker_id);
+  end loop;
+end $$;
+
+-- Check: the three tables with their policies (worker_notif_prefs: read only; push_reminders: read own + admin writes)
+select tablename, policyname, cmd from pg_policies
+where schemaname = 'public' and tablename in ('push_subscriptions', 'push_reminders', 'worker_notif_prefs')
+order by tablename, policyname;
+
+
+-- =====================================================================
+-- PART 6B — the every-minute sender   (Phase 6: run AFTER the send-reminders
+-- function is deployed and its secrets are saved — see SETUP.md)
+-- 1) Turn on the extensions first: Database → Extensions → pg_cron and pg_net.
+-- 2) Replace YOUR_CRON_SECRET below with the SAME secret you saved as CRON_SECRET.
+-- Safe to run twice (it replaces the old schedule instead of adding a second one).
+-- =====================================================================
+
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'send-push-reminders') then
+    perform cron.unschedule('send-push-reminders');
+  end if;
+end $$;
+
+select cron.schedule(
+  'send-push-reminders',
+  '* * * * *',
+  $job$
+  select net.http_post(
+    url := 'https://vkuvdmqtlkrlanrzkfdz.supabase.co/functions/v1/send-reminders',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', 'YOUR_CRON_SECRET'),
+    body := '{}'::jsonb
+  );
+  $job$
+);
+
+-- Check: one row, active = true
+select jobname, schedule, active from cron.job where jobname = 'send-push-reminders';
