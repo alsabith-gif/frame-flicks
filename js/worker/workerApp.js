@@ -194,7 +194,9 @@ function wireOnce() {
 // Called by bootstrap.js. The caller shows the shell afterwards.
 export async function bootWorker({ profile: p }) {
   profile = p;
-  page = 'work';
+  // A tapped notification opens the app on ?page=work (or calendar, earnings...).
+  const wanted = new URLSearchParams(window.location.search).get('page');
+  page = PAGES.some((x) => x.id === wanted) ? wanted : 'work';
   const cached = cachedTasks();
   pendingOps.clear();
   resetCalendarView();

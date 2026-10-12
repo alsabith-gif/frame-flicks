@@ -14,8 +14,33 @@ export function isIOS() {
 export function isStandalone() {
   return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 }
+// The public key now comes from the server (send-reminders function), so there is
+// nothing to paste into config.js any more. (A key in config.js still works as an override.)
 export function vapidConfigured() {
-  return !!VAPID_PUBLIC_KEY;
+  return true;
+}
+
+let cachedKey = null;
+export async function getPublicKey() {
+  if (VAPID_PUBLIC_KEY) return VAPID_PUBLIC_KEY;
+  if (cachedKey) return cachedKey;
+  const { data, error } = await supabase.functions.invoke('send-reminders', { body: { public_key: true } });
+  if (error || !data || !data.public_key) {
+    throw new Error('Notifications are not set up on the server yet. Ask the admin to finish the notification setup.');
+  }
+  cachedKey = data.public_key;
+  return cachedKey;
+}
+
+// What this device can do right now (used by the Settings screens).
+export async function deviceStatus() {
+  const supported = pushSupported();
+  const ios = isIOS();
+  const standalone = isStandalone();
+  const permission = supported ? Notification.permission : 'unsupported';
+  let subscribed = false;
+  if (supported) { try { subscribed = !!(await currentSubscription()); } catch (e) { subscribed = false; } }
+  return { supported, ios, standalone, permission, subscribed, needsInstall: ios && !standalone };
 }
 
 export async function registerServiceWorker() {
@@ -44,17 +69,18 @@ export async function currentSubscription() {
 // in response to a user gesture).
 export async function enablePush() {
   if (!pushSupported()) throw new Error("This browser doesn't support push notifications.");
-  if (!VAPID_PUBLIC_KEY) throw new Error('Push is not set up yet — add the VAPID public key in js/config.js (see SETUP.md).');
   const session = await getSession();
   if (!session) throw new Error('Please log in first.');
 
+  // Ask for the permission first (it must happen straight after the tap), then fetch the key.
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') throw new Error('Notifications are blocked. Allow them for this app in your phone/browser settings, then try again.');
 
+  const publicKey = await getPublicKey();
   await registerServiceWorker();
   const reg = await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription())
-    || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyToBytes(VAPID_PUBLIC_KEY) }));
+    || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyToBytes(publicKey) }));
   const j = sub.toJSON();
   const { error } = await supabase.from('push_subscriptions').upsert({
     endpoint: j.endpoint,
@@ -63,7 +89,7 @@ export async function enablePush() {
     user_id: session.user.id,
     user_agent: navigator.userAgent.slice(0, 200),
   }, { onConflict: 'endpoint' });
-  if (error) throw new Error('Could not save this device — did you run the SQL in SETUP.md? (' + error.message + ')');
+  if (error) throw new Error('Could not save this device — did you run PART 6A in SETUP.md? (' + error.message + ')');
   return true;
 }
 
@@ -79,6 +105,6 @@ export async function disablePush() {
 export async function sendTestPush() {
   const { data, error } = await supabase.functions.invoke('send-reminders', { body: { test: true } });
   if (error) throw new Error('Test failed — is the send-reminders function deployed? (see SETUP.md)');
-  if (!data || !data.sent) throw new Error('The server has no device registered for you yet.');
+  if (!data || !data.sent) throw new Error('The server has no device registered for you yet (or notifications are switched off for this account).');
   return data.sent;
 }

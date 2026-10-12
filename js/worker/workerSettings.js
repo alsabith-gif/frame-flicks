@@ -6,6 +6,7 @@ import { logout, setNewPassword } from '../cloud.js';
 import * as facelock from '../facelock.js';
 import { showToast } from '../toast.js';
 import { ROLE_LABEL } from './workerView.js';
+import { mountNotifyPanel } from './workerNotify.js';
 
 export function renderWorkerSettings(root, { profile }) {
   const supported = facelock.isSupported();
@@ -16,6 +17,8 @@ export function renderWorkerSettings(root, { profile }) {
       <div class="wa-kv"><span>Email</span><b>${escHtml(profile.email || '')}</b></div>
       <div class="wa-kv"><span>Role</span><b>${escHtml(ROLE_LABEL[profile.job_role] || '—')}</b></div>
     </section>
+
+    <section class="wa-panel" id="waNotifyPanel"></section>
 
     <section class="wa-panel">
       <h2 class="wa-h2">Face ID / fingerprint</h2>
@@ -39,6 +42,8 @@ export function renderWorkerSettings(root, { profile }) {
     <section class="wa-panel">
       <button class="btn btn-ghost wa-logout" id="waLogout">Log out</button>
     </section>`;
+
+  mountNotifyPanel(root.querySelector('#waNotifyPanel'));
 
   if (supported) {
     const desc = root.querySelector('#waFaceDesc');
