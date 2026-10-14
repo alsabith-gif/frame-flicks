@@ -2,5 +2,5 @@
 // tell at a glance which version of the app is actually live.
 // Bumped at the end of every worker-system phase.
 
-export const APP_VERSION = 'Phase 6 · notifications';
-export const APP_BUILD = 'build 6 · 11 Oct 2026';
+export const APP_VERSION = 'Complete · worker system (security checked)';
+export const APP_BUILD = 'build 7 · 14 Oct 2026';

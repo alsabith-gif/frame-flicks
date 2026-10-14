@@ -858,3 +858,36 @@ select cron.schedule(
 
 -- Check: one row, active = true
 select jobname, schedule, active from cron.job where jobname = 'send-push-reminders';
+
+
+-- =====================================================================
+-- PART 7 — final tightening   (Final step: run once, after PART 6A)
+-- A deactivated worker could still add a phone to their own list. It was
+-- harmless (the sender never sends to a deactivated person) but now the
+-- database refuses it too. Adding or changing a phone needs an ACTIVE
+-- worker or the admin; reading and removing your own phones is always allowed.
+-- Safe to run twice.
+-- =====================================================================
+
+do $$
+declare p record;
+begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'push_subscriptions' loop
+    execute format('drop policy %I on public.push_subscriptions', p.policyname);
+  end loop;
+end $$;
+
+create policy "push_subscriptions: read own" on public.push_subscriptions
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "push_subscriptions: delete own" on public.push_subscriptions
+  for delete to authenticated using (user_id = (select auth.uid()));
+create policy "push_subscriptions: add own (active only)" on public.push_subscriptions
+  for insert to authenticated
+  with check (user_id = (select auth.uid()) and ((select public.is_admin()) or (select public.is_active_worker())));
+create policy "push_subscriptions: change own (active only)" on public.push_subscriptions
+  for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()) and ((select public.is_admin()) or (select public.is_active_worker())));
+
+-- Check: four policies on push_subscriptions
+select policyname, cmd from pg_policies where schemaname = 'public' and tablename = 'push_subscriptions' order by policyname;

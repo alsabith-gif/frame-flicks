@@ -654,3 +654,95 @@ The database, the sender function, the encryption and the worker screens were te
 a real database and a fake phone. A real notification reaching a real phone through Google/Apple could **not** be
 tested from here, so step 8 is the real proof. Notification delivery on iPhone also depends on Apple's rules
 (Home Screen app, iOS 16.4+).
+
+
+---
+
+## Final step — the security proof (run this once, then keep it)
+
+This proves, with real tests, that a **worker account** can only do what a worker is meant to do. You run
+**two things**: a script in Supabase (5 minutes) and a checklist with two browser windows (15 minutes).
+
+### What a worker must NOT be able to do
+1. Read, add, change or delete anything in your business data (`app_data`: income, prospects, pricing, invoices, client phone numbers, project prices).
+2. See another worker's jobs or pay, or create / edit / delete any job.
+3. Change the status of someone else's job, or change any pay or paid field at all.
+4. See other people's accounts, or make themselves admin / re-activate themselves.
+5. Read or change your client progress links (`project_status`) directly.
+6. Call the admin functions (create a worker, sign someone out, trigger notifications).
+7. See any admin screen or admin data in the browser — the admin app code is never even downloaded for a worker.
+8. Keep any access after being deactivated (jobs vanish, status changes refused, sign-in refused, notifications stop, phone forgotten).
+9. Receive a notification that contains pay, a client phone number, a price or your private notes.
+
+### 1. Run PART 7 (one small extra lock)
+Supabase → **SQL Editor** → **New query** → paste the whole of `phase7-part7.sql` → **Run**.
+(A deactivated worker could still add a phone to their own list. Harmless, but now the database refuses it too.)
+
+### 2. Run the proof script
+Supabase → **SQL Editor** → **New query** → paste the whole of `supabase/worker-tests.sql` → **Run**.
+It makes four pretend people (emails ending `@wt-test.invalid`), tries to break the rules as each of them, and
+**deletes everything it made**. It never touches your real data. Safe to run again any time (for example after
+every future update).
+
+At the bottom you get a list. **The first line must say `ALL … CHECKS PASSED`** and every line must say **PASS**.
+If any line says FAIL, send me a screenshot of that line. Do not use workers for real until it is fixed.
+
+### 3. The checklist with real accounts (admin window + private window)
+You need: your admin login, one test worker (a second email you own), and one test project with that worker
+assigned and given some pay. Open **two windows**: your normal Chrome window (admin) and an **Incognito / private
+window** (the worker). Tick each line.
+
+**A. What the worker sees (private window, logged in as the test worker)**
+- [ ] Only four tabs: **My Work, My Calendar, My Earnings, Settings**. No Income, Prospects, Workers, Pricing, Invoice or Analysis menu anywhere.
+- [ ] Only the test worker's own jobs show. (Give a second worker a different job: it must not appear.)
+- [ ] My Work shows no money. **My Earnings** shows only this worker's own pay.
+- [ ] No client phone number and no project price anywhere (check My Work, My Calendar, and a job's details).
+- [ ] In the address bar, change the end of the web address to `?page=income`, then to `?page=prospects`, and press Enter. The app must still show the worker screens (My Work), never an admin page.
+- [ ] Change the status of the worker's own job to **In progress**, then **Done**. In the admin window the new status appears (refresh).
+- [ ] The worker cannot change the pay: there is simply no pay box anywhere on a worker screen.
+
+**B. Deactivation (admin window, then the private window)**
+- [ ] Admin: **Workers → Deactivate** the test worker.
+- [ ] Private window: press F5. It must go back to the login screen. Log in again with the worker's password: it says the account has been **deactivated**.
+- [ ] Admin: change the test project's date. **No notification** reaches the worker's phone.
+- [ ] Admin: **Reactivate**. The worker can log in again and sees their jobs. (They must tap **Turn on notifications on this phone** once more.)
+
+**C. Notifications (worker's phone)**
+- [ ] A new job, a changed date, and a removed job each produce a notification within about a minute.
+- [ ] None of them shows an amount, a phone number, a price or your private notes.
+- [ ] After the worker switches **Job changes** off, a change sends nothing.
+
+**D. Client links still work**
+- [ ] A client progress link (`track.html?...`) opened in a private window still shows that one project, and nothing else.
+
+### 4. Clean-up (when you are done testing)
+1. **Test projects:** in the admin app, delete each test project. This also removes the crew jobs made for it.
+   (If a test job was marked **paid**, the app warns you first: deleting it deletes that pay record.)
+2. **Test worker:** Supabase → **Authentication** → **Users** → find the test worker's email → **⋯** → **Delete user**.
+   This removes their account, jobs and choices. Then run this once in the SQL Editor to remove their leftover
+   notification rows:
+   ```sql
+   delete from public.push_reminders     where user_id not in (select id from auth.users);
+   delete from public.push_subscriptions where user_id not in (select id from auth.users);
+   ```
+3. The proof script cleans up after itself. Check that nothing is left over by running
+   `select email from auth.users where email like '%wt-test%';` — it must return no rows.
+4. Remove the test worker's phone: on that phone, Settings → Notifications → **Turn off on this phone**.
+
+### Where the rules live (for the curious)
+Every rule above is enforced by the **database and server functions**, not by hiding buttons: a worker who edits
+the web page or tampers with their browser still gets nothing, because Supabase refuses the request. The proof
+script tests exactly that layer. The browser tests also check that a worker's browser never loads admin code, that
+a deactivated account is signed out, and that the admin function and the notification sender refuse a worker.
+
+### What changed (final step)
+- `supabase/worker-tests.sql` (73 checks), self-cleaning, safe to re-run after any future change.
+- PART 7: a deactivated worker cannot register a phone any more.
+- Tests added for the admin server function and for who sees which screen.
+- Version label: **Complete · worker system (security checked)**.
+
+### What could not be tested here
+Everything above was tested with simulated accounts on a real database and with simulated browsers. The checklist
+in step 3 is your proof on the real thing (real login, real phone, real Supabase project). Supabase's own sign-in
+ban and session sign-out (what happens inside Supabase when you press Deactivate) were tested against a stand-in,
+so checklist B is the real proof for those.
