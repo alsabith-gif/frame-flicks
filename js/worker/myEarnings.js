@@ -1,6 +1,6 @@
 // worker/myEarnings.js — the "My Earnings" tab. A worker sees ONLY their own
-// jobs' pay (the database never sends anyone else's). Pay is shown here and
-// nowhere else in the worker app. Read-only: there is nothing to edit.
+// jobs' pay (the database never sends anyone else's). Pay also appears on each
+// job card (Works) and in the Home snapshot — always the worker's own. Read-only: there is nothing to edit.
 
 import { escHtml } from '../format.js';
 import { fmtDay } from './workerView.js';
@@ -45,7 +45,7 @@ export function renderMyEarnings(root, state) {
       <div class="wa-empty">
         <div class="wa-empty-ico">💰</div>
         <p>Nothing earned yet.</p>
-        <p class="muted">When you mark a job <b>Done</b> on My Work, it counts here.</p>
+        <p class="muted">When you mark a job <b>Done</b> on the Works tab, it counts here.</p>
       </div>`;
     return;
   }

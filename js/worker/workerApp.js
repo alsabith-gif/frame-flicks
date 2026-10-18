@@ -10,22 +10,24 @@ import { supabase, getSession, fetchProfile, logout } from '../cloud.js';
 import { rolesText, loadRoles } from '../roles.js';
 import { cachedTasks, fetchMyTasks, saveCachedTasks, setTaskStatus } from './workerData.js';
 import { renderMyWork } from './myWork.js';
+import { renderWorkerHome } from './workerHome.js';
 import { renderWorkerCalendar, resetCalendarView } from './workerCalendar.js';
 import { renderMyEarnings } from './myEarnings.js';
 import { renderWorkerSettings } from './workerSettings.js';
 import { localToday, isClosed, STATUS_LABEL } from './workerView.js';
 
 const PAGES = [
-  { id: 'work', label: 'My Work', icon: '🎬' },
-  { id: 'calendar', label: 'My Calendar', icon: '📅' },
-  { id: 'earnings', label: 'My Earnings', icon: '💰' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
+  { id: 'home', label: 'Home', icon: '🏠' },
+  { id: 'calendar', label: 'Calendar', icon: '📅' },
+  { id: 'work', label: 'Works', icon: '🎬' },
+  { id: 'earnings', label: 'Earnings', icon: '💰' },
+  { id: 'profile', label: 'Profile', icon: '👤' },
 ];
 
 const REFRESH_EVERY_MS = 60000;
 
 let profile = null;
-let page = 'work';
+let page = 'home';
 let wired = false;
 let refreshing = false;
 let state = { tasks: null, loading: true, error: null, offline: false, today: localToday(), pending: new Set() };
@@ -46,10 +48,11 @@ function renderPage() {
   const main = $('waMain');
   state.today = localToday();
   state.pending = new Set(pendingOps.keys());
-  if (page === 'work') renderMyWork(main, state);
+  if (page === 'home') renderWorkerHome(main, state, profile);
+  else if (page === 'work') renderMyWork(main, state);
   else if (page === 'calendar') renderWorkerCalendar(main, state);
   else if (page === 'earnings') renderMyEarnings(main, state);
-  else if (page === 'settings') renderWorkerSettings(main, { profile });
+  else if (page === 'profile') renderWorkerSettings(main, { profile });
   if (page === 'work') showCardMsg();
 }
 
@@ -89,7 +92,7 @@ async function refresh() {
   } finally {
     refreshing = false;
     if (spin) spin.classList.remove('spinning');
-    if (page === 'work' || page === 'calendar' || page === 'earnings') renderPage();   // never redraw Settings: it would wipe a half-typed password
+    if (page !== 'profile') renderPage();   // never redraw Profile: it would wipe a half-typed password
   }
 }
 
@@ -180,6 +183,8 @@ function wireOnce() {
   });
   $('waRefresh').addEventListener('click', () => refresh());
   $('waMain').addEventListener('click', (e) => {
+    const goBtn = e.target.closest('[data-go]');
+    if (goBtn) { go(goBtn.dataset.go); return; }
     const b = e.target.closest('[data-set-status]');
     if (!b || b.disabled) return;
     const card = b.closest('.wa-card');
@@ -196,8 +201,9 @@ function wireOnce() {
 export async function bootWorker({ profile: p }) {
   profile = p;
   // A tapped notification opens the app on ?page=work (or calendar, earnings...).
-  const wanted = new URLSearchParams(window.location.search).get('page');
-  page = PAGES.some((x) => x.id === wanted) ? wanted : 'work';
+  const raw = new URLSearchParams(window.location.search).get('page');
+  const wanted = raw === 'settings' ? 'profile' : raw;     // old links used 'settings'
+  page = PAGES.some((x) => x.id === wanted) ? wanted : 'home';
   const cached = cachedTasks();
   pendingOps.clear();
   resetCalendarView();

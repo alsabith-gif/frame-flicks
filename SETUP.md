@@ -800,3 +800,30 @@ Open `supabase/worker-tests.sql` in the SQL Editor and run it. It must say **ALL
 ### What changed (build 8)
 - New: `js/roles.js`, `APP-NOTES.md`. Changed: Workers page, Settings page, crew form, worker screens, `admin-create-worker`, `worker-setup.sql` (PART 8), `worker-tests.sql` (82 checks).
 - Tested on a real Postgres database, with the Deno function tests and the simulated browser tests (all suites passed).
+
+
+---
+
+## Phase 1 — worker app with 5 tabs (build 9)
+
+**No SQL and no function changes this time. You only upload files.**
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`phase1_changed_files_only.zip`**. They replace the old ones. Then open the app and press **Ctrl+Shift+R**. The version at the bottom of Settings (admin) should say **Phase 1 · worker app with 5 tabs · build 9**.
+
+### 2. Test it (log in as your test worker, in a private window)
+1. The app opens on **Home**: counts for Today / Overdue / To finish, today's jobs, the next shoot, and a small "My earnings" box.
+2. Bottom tabs are now **Home, Calendar, Works, Earnings, Profile**.
+3. **Works**: each job card shows **My pay** and "Paid / Not paid yet", plus the To do / In progress / Done buttons. Change one status — it still works.
+4. **Profile**: it has everything the old Settings had (account, notifications, Face ID, change password, log out).
+5. A tapped notification still opens the right tab.
+
+### If you see…
+| You see | Do this |
+|---|---|
+| Old 4 tabs (My Work, My Calendar…) | Files not uploaded fully, or old page cached. Re-upload and press Ctrl+Shift+R. |
+| Home is empty but the worker has jobs | Press the ↻ refresh button at the top. |
+| Unstyled / odd look | Upload `css/worker.css` again and refresh. |
+
+### What changed (build 9)
+New `js/worker/workerHome.js`. Changed: `workerApp.js`, `myWork.js`, `myEarnings.js` (text), `workerSettings.js` (now "Profile"), `css/worker.css`, `version.js`, notes. A worker still only ever sees their own jobs and their own pay.

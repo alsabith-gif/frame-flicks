@@ -3,7 +3,8 @@
 // control (Phase 4). A worker only ever sees their own jobs
 // (the database guarantees it). Shown on each card: title, client NAME,
 // location, shoot date + time, deadline, their role, and status.
-// Never shown: client phone, project price, anyone else's pay.
+// Also shown: THEIR OWN pay for the job and whether it is paid. Never shown:
+// client phone, project price, anyone else's pay.
 
 import { escHtml } from '../format.js';
 import {
@@ -11,6 +12,7 @@ import {
   STATUS_LABEL, ROLE_LABEL,
 } from './workerView.js';
 import { roleMainDate } from '../roles.js';
+import { money } from './earningsCalc.js';
 
 const STATUS_ORDER = ['todo', 'in_progress', 'done'];
 
@@ -50,6 +52,11 @@ export function taskCardHtml(t, today, pending = false) {
   }
   if (t.notes) {
     lines.push(`<div class="wa-line wa-notes"><span class="wa-ico">📝</span><span>${escHtml(t.notes)}</span></div>`);
+  }
+
+  if (t.pay_amount !== null && t.pay_amount !== undefined) {
+    const paid = t.pay_status === 'paid';
+    lines.push(`<div class="wa-line wa-pay"><span class="wa-ico">💰</span><span><b>My pay</b> ${escHtml(money(t.pay_amount))} <span class="badge ${paid ? 'badge-green' : 'badge-amber'}">${paid ? 'Paid' : 'Not paid yet'}</span></span></div>`);
   }
 
   return `

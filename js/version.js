@@ -2,5 +2,5 @@
 // tell at a glance which version of the app is actually live.
 // Bumped at the end of every worker-system phase.
 
-export const APP_VERSION = 'Roles update · multi-role workers';
-export const APP_BUILD = 'build 8 · 18 Oct 2026';
+export const APP_VERSION = 'Phase 1 · worker app with 5 tabs';
+export const APP_BUILD = 'build 9 · 18 Oct 2026';

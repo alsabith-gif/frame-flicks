@@ -290,3 +290,15 @@
   }
   .wa-tab { flex: 0 0 auto; flex-direction: row; gap: 8px; padding: 12px 18px; font-size: 13.5px; }
 }
+
+/* Home tab */
+.wa-home-stats { display: flex; gap: 10px; }
+.wa-stat { flex: 1; text-align: center; padding: 10px 4px; border-radius: 12px; background: var(--surface-2, rgba(127,127,127,.08)); }
+.wa-stat b { display: block; font-size: 24px; line-height: 1.1; }
+.wa-stat span { font-size: 12px; color: var(--muted); }
+.wa-stat.is-late b { color: var(--red, #c0392b); }
+.wa-home-job { padding: 8px 0; border-top: 1px solid var(--border); }
+.wa-home-job:first-of-type { border-top: 0; }
+.wa-earn { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.wa-pill { padding: 6px 10px; border-radius: 999px; background: var(--surface-2, rgba(127,127,127,.1)); font-size: 13px; }
+.wa-pay .badge { margin-left: 4px; }

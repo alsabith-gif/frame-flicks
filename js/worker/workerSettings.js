@@ -1,4 +1,4 @@
-// worker/workerSettings.js — the worker's Settings page: who they are,
+// worker/workerSettings.js — the worker's Profile tab (formerly Settings): who they are,
 // Face ID on/off for this device, change password, log out.
 
 import { escHtml } from '../format.js';
