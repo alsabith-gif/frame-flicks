@@ -4,6 +4,8 @@
 // All dates are plain "YYYY-MM-DD" strings and are compared as calendar days
 // (never as moments in time), so a shoot on the 12th is the 12th everywhere.
 
+import { roleMainDate } from '../roles.js';
+
 export function localToday(now = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
@@ -51,7 +53,7 @@ export function relDay(ymd, today) {
 // The date a job is mainly about: the shoot for camera work, the deadline
 // for editing (each falls back to the other if it is missing).
 export function keyDate(t) {
-  return t.role === 'editor' ? (t.due_date || t.shoot_date || null) : (t.shoot_date || t.due_date || null);
+  return roleMainDate(t.role) === 'deadline' ? (t.due_date || t.shoot_date || null) : (t.shoot_date || t.due_date || null);
 }
 
 const byDateThenTime = (a, b) => {
@@ -80,7 +82,7 @@ export function groupTasks(tasks, today) {
 
 export const STATUS_LABEL = { todo: 'To do', in_progress: 'In progress', done: 'Done' };
 export const STATUS_CLASS = { todo: 'badge-muted', in_progress: 'badge-blue', done: 'badge-green' };
-export const ROLE_LABEL = { camera: 'Camera', editor: 'Editor' };
+export { ROLE_LABEL } from '../roles.js';   // the role names (Camera, Editor + any the admin added)
 
 // ---------------------------------------------------------------------------
 // Phase 4 additions

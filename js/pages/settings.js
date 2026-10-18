@@ -5,7 +5,9 @@ import { EVENT_TYPES } from '../reminderRules.js';
 import * as push from '../push.js';
 import { showToast } from '../toast.js';
 import * as facelock from '../facelock.js';
-import { logout } from '../cloud.js';
+import { logout, supabase } from '../cloud.js';
+import { getRoles, loadRoles, slugRole } from '../roles.js';
+import { escHtml } from '../format.js';
 import { APP_VERSION, APP_BUILD } from '../version.js';
 
 function renderModeSwitcher() {
@@ -139,10 +141,84 @@ async function renderNotifs() {
   });
 }
 
+// ---- Crew roles: the list of jobs a worker can have (Camera, Editor + your own) ----
+const MAIN_DATE_TEXT = { shoot: 'works to the shoot day', deadline: 'works to the deadline' };
+
+function roleError(error) {
+  const msg = (error && error.message) || 'Something went wrong.';
+  if (error && (error.code === '42P01' || error.code === 'PGRST205')) return 'The roles table is missing — run the roles SQL file first (SETUP.md → Roles update).';
+  if (error && error.code === '23505') return 'A role with that name already exists.';
+  return msg;
+}
+
+async function renderRoles(note = '') {
+  const box = document.getElementById('rolesCard');
+  if (!box) return;
+  const res = await loadRoles(supabase);
+  const rows = getRoles();
+  const err = res.ok ? '' : roleError(res.error);
+  box.innerHTML = `<h2 class="settings-title">Crew roles</h2>
+    <p class="settings-desc">The jobs your workers do. Camera and Editor are always there. Add your own (Drone, Photographer, Colorist…) and then tick them when you add or edit a worker.</p>
+    ${err ? `<p class="settings-note" id="rolesErr">${escHtml(err)}</p>` : ''}
+    <div class="roles-list">${rows.map((r) => `
+      <div class="settings-row roles-row" data-key="${escHtml(r.key)}">
+        <span class="settings-row-label"><b>${escHtml(r.label)}</b><br><small>${escHtml(MAIN_DATE_TEXT[r.main_date])}${r.builtin ? ' · built in' : ''}</small></span>
+        <span class="roles-actions">
+          <button class="btn btn-ghost btn-sm" data-act="rename">Rename</button>
+          ${r.builtin ? '' : '<button class="btn btn-ghost btn-sm" data-act="remove">Remove</button>'}
+        </span>
+      </div>`).join('')}</div>
+    <form id="roleAddForm" class="roles-add">
+      <input type="text" id="roleName" maxlength="30" placeholder="New role, e.g. Drone" required>
+      <select id="roleDate" aria-label="Which date matters most">
+        <option value="shoot">Works to the shoot day</option>
+        <option value="deadline">Works to the deadline</option>
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">Add role</button>
+    </form>
+    <p class="settings-note" id="rolesMsg">${escHtml(note)}</p>`;
+  const msg = (t) => { box.querySelector('#rolesMsg').textContent = t || ''; };
+
+  box.querySelector('#roleAddForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const label = box.querySelector('#roleName').value.trim();
+    const key = slugRole(label);
+    if (!label || !key) { msg('Type a name for the role (letters or numbers).'); return; }
+    const dupe = getRoles().find((r) => r.key === key || r.label.toLowerCase() === label.toLowerCase());
+    if (dupe) { msg(`"${dupe.label}" already exists.`); return; }
+    const { error } = await supabase.from('crew_roles').insert({
+      key, label, main_date: box.querySelector('#roleDate').value, sort_order: 100,
+    });
+    if (error) { msg(roleError(error)); return; }
+    showToast('Role added');
+    renderRoles();
+  });
+
+  box.querySelectorAll('.roles-row [data-act]').forEach((btn) => btn.addEventListener('click', async () => {
+    const key = btn.closest('.roles-row').dataset.key;
+    const role = getRoles().find((r) => r.key === key);
+    if (!role) return;
+    if (btn.dataset.act === 'rename') {
+      const label = (window.prompt(`New name for "${role.label}":`, role.label) || '').trim();
+      if (!label || label === role.label) return;
+      const { error } = await supabase.from('crew_roles').update({ label }).eq('key', key);
+      if (error) { msg(roleError(error)); return; }
+      showToast('Renamed');
+      renderRoles();
+    } else if (window.confirm(`Remove the role "${role.label}"?`)) {
+      const { error } = await supabase.from('crew_roles').delete().eq('key', key);
+      if (error) { msg(roleError(error)); return; }      // e.g. "Some workers still have this role"
+      showToast('Role removed');
+      renderRoles();
+    }
+  }));
+}
+
 export function init() {
   const v = document.getElementById('appVersion');
   if (v) v.textContent = `Version: ${APP_VERSION} · ${APP_BUILD}`;
   renderNotifs();
+  renderRoles();
   renderModeSwitcher();
   wireModeSwitcher();
   renderFaceLock();

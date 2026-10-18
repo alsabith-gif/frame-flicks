@@ -891,3 +891,156 @@ create policy "push_subscriptions: change own (active only)" on public.push_subs
 
 -- Check: four policies on push_subscriptions
 select policyname, cmd from pg_policies where schemaname = 'public' and tablename = 'push_subscriptions' order by policyname;
+
+-- =====================================================================
+-- PART 8 — crew roles   (Roles update: run once, after PART 7)
+-- • A worker can now have SEVERAL roles (e.g. Camera and Editor).
+-- • You can add your own roles (Drone, Photographer, ...) in Settings → Crew roles.
+-- Rules enforced here:
+--   • the list of roles is yours: only the admin can add, rename or remove a role
+--   • Camera and Editor are built in and can never be removed
+--   • a role that a worker or a job still uses cannot be removed
+--   • a worker or a job can only use roles that exist in the list
+--   • workers can READ the role names (so their screens can show "Drone"), nothing else
+-- Safe to run twice. Nothing existing changes: every worker keeps their role.
+-- =====================================================================
+
+create table if not exists public.crew_roles (
+  key         text primary key check (key ~ '^[a-z0-9][a-z0-9_-]{0,29}$'),
+  label       text not null check (char_length(btrim(label)) between 1 and 30),
+  main_date   text not null default 'shoot' check (main_date in ('shoot', 'deadline')),   -- which date matters most for this kind of work
+  builtin     boolean not null default false,
+  sort_order  integer not null default 100,
+  created_at  timestamptz not null default now()
+);
+create unique index if not exists crew_roles_label_unique on public.crew_roles (lower(btrim(label)));
+
+insert into public.crew_roles (key, label, main_date, builtin, sort_order) values
+  ('camera', 'Camera', 'shoot', true, 10),
+  ('editor', 'Editor', 'deadline', true, 20)
+on conflict (key) do nothing;
+
+alter table public.crew_roles enable row level security;
+revoke all on public.crew_roles from anon;
+
+do $$
+declare p record;
+begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'crew_roles' loop
+    execute format('drop policy %I on public.crew_roles', p.policyname);
+  end loop;
+end $$;
+
+create policy "crew_roles: admin all" on public.crew_roles
+  for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+create policy "crew_roles: active workers read" on public.crew_roles
+  for select to authenticated using ((select public.is_active_worker()));
+
+-- Keep the built-in roles safe, and refuse to remove a role that is still in use.
+create or replace function public.crew_roles_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    if new.key is distinct from old.key then
+      raise exception 'A role''s code cannot be changed. Add a new role instead.' using errcode = '55000';
+    end if;
+    if old.builtin and (new.builtin is distinct from old.builtin or new.main_date is distinct from old.main_date) then
+      raise exception 'Camera and Editor are built in. You can only rename them.' using errcode = '55000';
+    end if;
+    if not old.builtin and new.builtin then
+      raise exception 'A custom role cannot become built in.' using errcode = '55000';
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    if old.builtin then
+      raise exception '% is built in and cannot be removed.', old.label using errcode = '55000';
+    end if;
+    if exists (select 1 from public.profiles where old.key = any (job_roles)) then
+      raise exception 'Some workers still have the role "%". Take it off them first.', old.label using errcode = '23503';
+    end if;
+    if exists (select 1 from public.worker_tasks where role = old.key) then
+      raise exception 'Some jobs still use the role "%". Delete or change those jobs first.', old.label using errcode = '23503';
+    end if;
+    return old;
+  end if;
+
+  if tg_op = 'INSERT' and new.builtin and new.key not in ('camera', 'editor') then
+    raise exception 'Only the built-in roles can be marked built in.' using errcode = '55000';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.crew_roles_guard() from public, anon, authenticated;
+
+drop trigger if exists crew_roles_guard on public.crew_roles;
+create trigger crew_roles_guard
+  before insert or update or delete on public.crew_roles
+  for each row execute function public.crew_roles_guard();
+
+-- ---- workers: a LIST of roles (job_role stays = the first one, so older screens keep working)
+alter table public.profiles add column if not exists job_roles text[] not null default '{}';
+alter table public.profiles drop constraint if exists profiles_job_role_check;   -- was: only camera / editor
+
+update public.profiles set job_roles = array[job_role] where job_role is not null and cardinality(job_roles) = 0;
+
+create or replace function public.profiles_sync_roles()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare r text;
+begin
+  -- An older caller that only sets the single role: turn it into a one-item list.
+  if tg_op = 'INSERT' then
+    if cardinality(new.job_roles) = 0 and new.job_role is not null then new.job_roles := array[new.job_role]; end if;
+  elsif new.job_role is distinct from old.job_role and new.job_roles is not distinct from old.job_roles then
+    new.job_roles := case when new.job_role is null then '{}'::text[] else array[new.job_role] end;
+  end if;
+
+  -- no duplicates, order kept
+  new.job_roles := coalesce((select array_agg(x.r order by x.o)
+                               from (select t.r, min(t.o) as o from unnest(new.job_roles) with ordinality as t(r, o) group by t.r) x), '{}'::text[]);
+
+  foreach r in array new.job_roles loop
+    if not exists (select 1 from public.crew_roles c where c.key = r) then
+      raise exception 'Unknown role "%". Add it in Settings → Crew roles first.', r using errcode = '23503';
+    end if;
+  end loop;
+
+  new.job_role := new.job_roles[1];      -- the "main" role = the first one (null when none)
+  return new;
+end;
+$$;
+revoke all on function public.profiles_sync_roles() from public, anon, authenticated;
+
+drop trigger if exists profiles_sync_roles on public.profiles;
+create trigger profiles_sync_roles
+  before insert or update on public.profiles
+  for each row execute function public.profiles_sync_roles();
+
+-- ---- jobs: any role from the list (was: only camera / editor)
+do $$
+declare c text;
+begin
+  for c in select conname from pg_constraint
+            where conrelid = 'public.worker_tasks'::regclass and contype = 'c'
+              and pg_get_constraintdef(oid) like '%''camera''%' loop
+    execute format('alter table public.worker_tasks drop constraint %I', c);
+  end loop;
+  if not exists (select 1 from pg_constraint where conname = 'worker_tasks_role_fkey') then
+    alter table public.worker_tasks
+      add constraint worker_tasks_role_fkey foreign key (role) references public.crew_roles (key) on update cascade;
+  end if;
+end $$;
+
+-- Check: the built-in roles, and which roles each worker has
+select key, label, main_date, builtin from public.crew_roles order by sort_order, label;
+select email, job_roles from public.profiles where role = 'worker' order by email;

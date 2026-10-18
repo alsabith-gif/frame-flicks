@@ -10,6 +10,7 @@ import {
   groupTasks, fmtDay, fmtTime, relDay, dayDiff, isClosed,
   STATUS_LABEL, ROLE_LABEL,
 } from './workerView.js';
+import { roleMainDate } from '../roles.js';
 
 const STATUS_ORDER = ['todo', 'in_progress', 'done'];
 
@@ -58,7 +59,7 @@ export function taskCardHtml(t, today, pending = false) {
           <h3 class="wa-title">${escHtml(t.title)}</h3>
           ${t.client_name ? `<div class="wa-client">${escHtml(t.client_name)}</div>` : ''}
         </div>
-        <span class="badge ${t.role === 'editor' ? 'badge-amber' : 'badge-purple'}">${escHtml(ROLE_LABEL[t.role] || t.role)}</span>
+        <span class="badge ${roleMainDate(t.role) === 'deadline' ? 'badge-amber' : 'badge-purple'}">${escHtml(ROLE_LABEL[t.role] || t.role)}</span>
       </div>
       <div class="wa-lines">${lines.join('')}</div>
       <div class="wa-card-foot">${statusHtml(t, pending)}</div>

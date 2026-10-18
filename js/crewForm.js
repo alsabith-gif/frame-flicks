@@ -15,6 +15,7 @@
 
 import { escHtml, currency } from './format.js';
 import { fmtDay } from './worker/workerView.js';
+import { workerRoles } from './roles.js';
 import {
   CREW_ROLES, CREW_ROLE_LABEL, suggestPays, validateCrew, buildTaskPayloads, diffCrew,
   loadWorkers, loadCrewForProject, saveCrewChanges,
@@ -73,12 +74,23 @@ export function initCrewSection(body, { projectId, distribution, getAmount, getR
       <option value="${escHtml(w.user_id)}" ${w.user_id === row.worker_id ? 'selected' : ''}>${escHtml(w.name || w.email || 'Unnamed')}${w.active ? '' : ' (deactivated)'}</option>`).join('');
   }
 
+  // The chosen worker's own roles come first; every other role is still available.
+  function roleOptions(row) {
+    const opt = (x) => `<option value="${escHtml(x)}" ${row.role === x ? 'selected' : ''}>${escHtml(CREW_ROLE_LABEL[x] || x)}</option>`;
+    const keys = CREW_ROLES.includes(row.role) || !row.role ? CREW_ROLES : [...CREW_ROLES, row.role];
+    const w = worker(row.worker_id);
+    const mine = w ? workerRoles(w).filter((x) => keys.includes(x)) : [];
+    if (mine.length < 1 || mine.length === keys.length) return keys.map(opt).join('');
+    const others = keys.filter((x) => !mine.includes(x));
+    return mine.map(opt).join('') + `<optgroup label="Other roles">${others.map(opt).join('')}</optgroup>`;
+  }
+
   function render() {
     const rowsEl = $('#crewRows');
     rowsEl.innerHTML = st.rows.map((r, i) => `
       <div class="crew-row${r.locked ? ' is-locked' : ''}" data-i="${i}">
         <select class="crew-worker" aria-label="Worker"${r.locked ? ' disabled' : ''}>${workerOptions(r)}</select>
-        <select class="crew-role" aria-label="Role">${CREW_ROLES.map((x) => `<option value="${x}" ${r.role === x ? 'selected' : ''}>${CREW_ROLE_LABEL[x]}</option>`).join('')}</select>
+        <select class="crew-role" aria-label="Role">${roleOptions(r)}</select>
         <div class="crew-pay-wrap">
           <input type="number" class="crew-pay" min="0" step="1" inputmode="decimal" placeholder="Pay ₹" aria-label="Pay in rupees" value="${escHtml(r.pay)}"${r.locked ? ' readonly' : ''}>
           <span class="crew-sug">${r.locked ? '🔒 Paid — locked' : (r.suggested ? `Suggested ${escHtml(currency(r.suggested))}` : '')}</span>
@@ -106,7 +118,8 @@ export function initCrewSection(body, { projectId, distribution, getAmount, getR
       if (e.target.classList.contains('crew-worker')) {
         r.worker_id = e.target.value;
         const w = worker(r.worker_id);
-        if (w && !r.roleTouched && CREW_ROLES.includes(w.job_role)) r.role = w.job_role;   // default to their usual role
+        const mine = w ? workerRoles(w).filter((x) => CREW_ROLES.includes(x)) : [];
+        if (mine.length && !r.roleTouched) r.role = mine[0];   // default to their usual role
         recalcSuggestions(); render();
       } else if (e.target.classList.contains('crew-role')) {
         r.role = e.target.value; r.roleTouched = true;

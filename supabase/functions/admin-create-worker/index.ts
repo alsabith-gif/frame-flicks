@@ -8,8 +8,10 @@
 // active admin in the `profiles` table. Anyone else gets a 401/403.
 //
 // Actions (JSON body { action, ... }):
-//   create        { name, email, job_role }      new worker + sends first code
-//   update        { user_id, name?, job_role? }
+//   create        { name, email, job_roles }     new worker + sends first code
+//                                                (job_roles = a list, e.g. ["camera","editor"];
+//                                                 the first is the main role)
+//   update        { user_id, name?, job_roles? }
 //   set_active    { user_id, active }            deactivate / reactivate
 //   resend_code   { user_id }                    send a fresh 6-digit code
 //   reset_access  { user_id }                    forget the password, sign out
@@ -42,7 +44,20 @@ class Refuse extends Error {
 }
 function fail(message: string, status = 400): never { throw new Refuse(message, status); }
 
-const JOB_ROLES = ["camera", "editor"];
+// Roles come from the crew_roles table (Settings → Crew roles). A worker can have
+// several; the first is the main one. (An older app that sends one job_role still works.)
+async function readRoles(body: Record<string, unknown>): Promise<string[]> {
+  const raw = Array.isArray(body.job_roles) ? body.job_roles : body.job_role !== undefined ? [body.job_role] : [];
+  const roles = [...new Set(raw.map((r) => clean(r)).filter(Boolean))];
+  if (!roles.length) fail("Pick at least one role.");
+  if (roles.length > 10) fail("That is too many roles for one person.");
+  const { data, error } = await db.from("crew_roles").select("key").in("key", roles);
+  if (error) fail("Could not check the roles. Has the roles SQL (PART 8) been run? " + error.message, 500);
+  const known = new Set((data ?? []).map((r: { key: string }) => r.key));
+  const bad = roles.find((r) => !known.has(r));
+  if (bad) fail(`Unknown role "${bad}". Add it in Settings → Crew roles first.`);
+  return roles;
+}
 const clean = (v: unknown) => String(v ?? "").trim();
 const isEmail = (s: string) => s.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
 const isId = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -67,7 +82,7 @@ async function loadWorker(userId: unknown, callerId: string) {
   if (id === callerId) fail("You can't do that to your own account.");
   const { data, error } = await db
     .from("profiles")
-    .select("user_id, role, name, email, active, job_role")
+    .select("user_id, role, name, email, active, job_role, job_roles")
     .eq("user_id", id)
     .maybeSingle();
   if (error) fail(error.message, 500);
@@ -96,10 +111,9 @@ async function handle(req: Request): Promise<Response> {
       case "create": {
         const name = clean(body.name);
         const email = clean(body.email).toLowerCase();
-        const job_role = clean(body.job_role);
         if (!name || name.length > 80) fail("Enter the worker's name.");
         if (!isEmail(email)) fail("Enter a valid email address.");
-        if (!JOB_ROLES.includes(job_role)) fail("Pick a role: camera or editor.");
+        const job_roles = await readRoles(body);
 
         const { data: created, error: cErr } = await db.auth.admin.createUser({
           email,
@@ -113,7 +127,7 @@ async function handle(req: Request): Promise<Response> {
         const userId = created.user.id;
 
         const { error: pErr } = await db.from("profiles").insert({
-          user_id: userId, role: "worker", name, email, job_role, active: true,
+          user_id: userId, role: "worker", name, email, job_roles, active: true,
         });
         if (pErr) {
           await db.auth.admin.deleteUser(userId);   // don't leave a half-made account behind
@@ -137,10 +151,8 @@ async function handle(req: Request): Promise<Response> {
           if (!name || name.length > 80) fail("Enter the worker's name.");
           patch.name = name;
         }
-        if (body.job_role !== undefined) {
-          const r = clean(body.job_role);
-          if (!JOB_ROLES.includes(r)) fail("Pick a role: camera or editor.");
-          patch.job_role = r;
+        if (body.job_roles !== undefined || body.job_role !== undefined) {
+          patch.job_roles = await readRoles(body);
         }
         if (Object.keys(patch).length) {
           const { error } = await db.from("profiles").update(patch).eq("user_id", w.user_id);

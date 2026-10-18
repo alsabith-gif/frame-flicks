@@ -9,6 +9,7 @@ import {
   calendarMarks, monthCells, monthLabel, fmtLongDay, fmtTime, relDay, localToday,
   STATUS_LABEL, STATUS_CLASS, ROLE_LABEL,
 } from './workerView.js';
+import { roleMainDate } from '../roles.js';
 
 const nowParts = () => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; };
 let view = nowParts();     // which month is showing (survives tab switches and refreshes)
@@ -32,7 +33,7 @@ function dayCard(mark, today) {
         ${t.client_name ? `<div class="wa-cal-item-sub">${escHtml(t.client_name)}</div>` : ''}
       </div>
       <div class="wa-cal-item-badges">
-        <span class="badge ${t.role === 'editor' ? 'badge-amber' : 'badge-purple'}">${escHtml(ROLE_LABEL[t.role] || t.role)}</span>
+        <span class="badge ${roleMainDate(t.role) === 'deadline' ? 'badge-amber' : 'badge-purple'}">${escHtml(ROLE_LABEL[t.role] || t.role)}</span>
         <span class="badge ${STATUS_CLASS[s]}">${STATUS_LABEL[s]}</span>
       </div>
     </div>`;

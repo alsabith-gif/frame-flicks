@@ -12,8 +12,8 @@ import { localToday, fmtDay, fmtTime, relDay, STATUS_LABEL, STATUS_CLASS } from 
 import { summarize, groupByWorker, filterJobs, isOverdue, wasMarkedDoneRecently, fmtStamp } from '../crewOverview.js';
 import { summarizeEarnings } from '../worker/earningsCalc.js';
 import { money, owedJobs, totalPay, canMarkPaid, isPaid, validatePaidDate, markPaid, markUnpaid } from '../pay.js';
+import { CREW_ROLES, ROLE_LABEL, loadRoles, workerRoles } from '../roles.js';
 
-const ROLE_LABEL = { camera: 'Camera', editor: 'Editor' };
 // Admin only: this page may read every worker's pay (the database refuses anyone else).
 const TASK_COLS = 'id, project_id, worker_id, role, title, client_name, location, shoot_date, shoot_time, due_date, status, done_at, updated_at, pay_amount, pay_status, paid_on';
 let workers = [];
@@ -88,7 +88,9 @@ function render() {
     <div class="card wk-card${w.active ? '' : ' is-off'}" data-id="${escHtml(w.user_id)}">
       <div>
         <div class="wk-name">${escHtml(w.name || 'Unnamed')}
-          <span class="badge badge-purple">${escHtml(ROLE_LABEL[w.job_role] || 'No role')}</span>
+          ${workerRoles(w).length
+            ? workerRoles(w).map((k) => `<span class="badge badge-purple">${escHtml(ROLE_LABEL[k] || k)}</span>`).join(' ')
+            : '<span class="badge badge-purple">No role</span>'}
           <span class="badge ${w.active ? 'badge-green' : 'badge-red'}">${w.active ? 'Active' : 'Deactivated'}</span>
         </div>
         <div class="wk-email">${escHtml(w.email || '')}</div>
@@ -109,6 +111,7 @@ function render() {
 }
 
 async function load() {
+  await loadRoles(supabase);      // role names (Camera, Editor + your own)
   const { data, error } = await supabase
     .from('profiles').select('*').eq('role', 'worker').order('name', { ascending: true });
   if (error) {
@@ -314,8 +317,9 @@ function openAdd() {
       <div class="form-grid">
         <div class="form-field full"><label>Name</label><input type="text" id="wkName" maxlength="80" required></div>
         <div class="form-field full"><label>Email (they log in with this)</label><input type="email" id="wkEmail" autocomplete="off" required></div>
-        <div class="form-field full"><label>Role</label>
-          <select id="wkRole"><option value="camera">Camera</option><option value="editor">Editor</option></select>
+        <div class="form-field full"><label>Role — tick everything this person does</label>
+          ${roleChecksHtml(['camera'])}
+          <p class="wk-note-small">The first one ticked is their main role. Need Drone, Photographer…? Add it in Settings → Crew roles.</p>
         </div>
       </div>
       <p class="wk-note-small">We'll email them a 6-digit code. After entering it they choose their own password.</p>
@@ -326,21 +330,42 @@ function openAdd() {
       </div>
     </form>`;
   openModal('Add Worker', body);
+  trackTickOrder(body, ['camera']);
   body.querySelector('#wkCancel').addEventListener('click', closeModal);
   body.querySelector('#wkAddForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = body.querySelector('#wkSave');
+    if (!pickedRoles(body).length) { body.querySelector('#wkFormError').textContent = 'Tick at least one role.'; return; }
     btn.disabled = true; btn.textContent = 'Adding…';
     const res = await run('Could not add worker', () => callWorkerAdmin('create', {
       name: body.querySelector('#wkName').value,
       email: body.querySelector('#wkEmail').value,
-      job_role: body.querySelector('#wkRole').value,
+      job_roles: pickedRoles(body),
     }), body.querySelector('#wkFormError'));
     if (!res) { btn.disabled = false; btn.textContent = 'Add worker'; return; }
     closeModal();
     if (res.warning) setNotice(res.warning + ' Use "Send new code" once email is working.', { error: true });
     else { setNotice(''); showToast('Worker added — code emailed'); }
     load();
+  });
+}
+
+// Tick-boxes for every role in the list. Ticking order is kept: the first tick is the main role.
+function roleChecksHtml(selected) {
+  const keys = [...CREW_ROLES, ...selected.filter((k) => !CREW_ROLES.includes(k))];
+  return `<div class="wk-roles" id="wkRoles">${keys.map((k) => `
+    <label class="wk-role-check"><input type="checkbox" name="wkRole" value="${escHtml(k)}" ${selected.includes(k) ? 'checked' : ''}> ${escHtml(ROLE_LABEL[k] || k)}</label>`).join('')}</div>`;
+}
+function pickedRoles(body) {
+  const ticked = [...body.querySelectorAll('input[name="wkRole"]:checked')].map((i) => i.value);
+  // keep the order they were ticked in (data-order is stamped on each tick)
+  return ticked.sort((a, b) => Number(body.querySelector(`input[name="wkRole"][value="${a}"]`).dataset.order || 0) - Number(body.querySelector(`input[name="wkRole"][value="${b}"]`).dataset.order || 0));
+}
+function trackTickOrder(body, selected) {
+  let n = 100;
+  body.querySelectorAll('input[name="wkRole"]').forEach((i) => { if (i.checked) i.dataset.order = String(selected.indexOf(i.value)); });
+  body.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'wkRole') e.target.dataset.order = e.target.checked ? String(n++) : '';
   });
 }
 
@@ -351,11 +376,9 @@ function openEdit(w) {
       <div class="form-grid">
         <div class="form-field full"><label>Name</label><input type="text" id="wkName" maxlength="80" required value="${escHtml(w.name || '')}"></div>
         <div class="form-field full"><label>Email</label><input type="email" value="${escHtml(w.email || '')}" disabled></div>
-        <div class="form-field full"><label>Role</label>
-          <select id="wkRole">
-            <option value="camera" ${w.job_role === 'camera' ? 'selected' : ''}>Camera</option>
-            <option value="editor" ${w.job_role === 'editor' ? 'selected' : ''}>Editor</option>
-          </select>
+        <div class="form-field full"><label>Role — tick everything this person does</label>
+          ${roleChecksHtml(workerRoles(w))}
+          <p class="wk-note-small">The first one ticked is their main role.</p>
         </div>
       </div>
       <p class="wk-note-small">To change someone's email, add them again with the new email and deactivate the old one.</p>
@@ -366,15 +389,17 @@ function openEdit(w) {
       </div>
     </form>`;
   openModal('Edit Worker', body);
+  trackTickOrder(body, workerRoles(w));
   body.querySelector('#wkCancel').addEventListener('click', closeModal);
   body.querySelector('#wkEditForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = body.querySelector('#wkSave');
+    if (!pickedRoles(body).length) { body.querySelector('#wkFormError').textContent = 'Tick at least one role.'; return; }
     btn.disabled = true; btn.textContent = 'Saving…';
     const res = await run('Could not save', () => callWorkerAdmin('update', {
       user_id: w.user_id,
       name: body.querySelector('#wkName').value,
-      job_role: body.querySelector('#wkRole').value,
+      job_roles: pickedRoles(body),
     }), body.querySelector('#wkFormError'));
     if (!res) { btn.disabled = false; btn.textContent = 'Save'; return; }
     closeModal(); showToast('Saved'); load();

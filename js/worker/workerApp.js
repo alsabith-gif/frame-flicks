@@ -6,13 +6,14 @@
 
 import { showToast } from '../toast.js';
 import { escHtml } from '../format.js';
-import { getSession, fetchProfile, logout } from '../cloud.js';
+import { supabase, getSession, fetchProfile, logout } from '../cloud.js';
+import { rolesText, loadRoles } from '../roles.js';
 import { cachedTasks, fetchMyTasks, saveCachedTasks, setTaskStatus } from './workerData.js';
 import { renderMyWork } from './myWork.js';
 import { renderWorkerCalendar, resetCalendarView } from './workerCalendar.js';
 import { renderMyEarnings } from './myEarnings.js';
 import { renderWorkerSettings } from './workerSettings.js';
-import { localToday, isClosed, ROLE_LABEL, STATUS_LABEL } from './workerView.js';
+import { localToday, isClosed, STATUS_LABEL } from './workerView.js';
 
 const PAGES = [
   { id: 'work', label: 'My Work', icon: '🎬' },
@@ -202,10 +203,17 @@ export async function bootWorker({ profile: p }) {
   resetCalendarView();
   state = { tasks: cached, loading: cached === null, error: null, offline: false, today: localToday(), pending: new Set() };
   $('waHello').textContent = p.name ? `Hi ${p.name}` : 'Welcome';
-  $('waRole').textContent = ROLE_LABEL[p.job_role] || '';
-  $('waRole').style.display = p.job_role ? '' : 'none';
+  $('waRole').textContent = rolesText(p);
+  $('waRole').style.display = rolesText(p) ? '' : 'none';
   wireOnce();
   renderTabs();
   renderPage();
   refresh();
+  // The role names (e.g. "Drone") come from the database; show them as soon as they arrive.
+  loadRoles(supabase).then((r) => {
+    if (!r.ok) return;
+    $('waRole').textContent = rolesText(profile);
+    $('waRole').style.display = rolesText(profile) ? '' : 'none';
+    renderPage();
+  });
 }

@@ -746,3 +746,57 @@ Everything above was tested with simulated accounts on a real database and with 
 in step 3 is your proof on the real thing (real login, real phone, real Supabase project). Supabase's own sign-in
 ban and session sign-out (what happens inside Supabase when you press Deactivate) were tested against a stand-in,
 so checklist B is the real proof for those.
+
+
+---
+
+## Roles update — workers with more than one role, and your own roles (build 8)
+
+What you get:
+- A worker can be **Camera and Editor** (or any mix). You tick the roles when you add or edit a worker.
+- **Settings → Crew roles**: add your own roles (Drone, Photographer, Colorist…), rename them, remove ones you don't use.
+- `APP-NOTES.md`: one file that explains the whole app. Send it (plus the app files) to any other AI and it will understand the app. It is kept up to date with every change.
+
+Do these in this order (about 10 minutes):
+
+### 1. Run the roles SQL
+1. Open Supabase → **SQL Editor** → **New query**.
+2. Open the file **`phase8-part8.sql`**, copy everything, paste it, click **Run**.
+3. At the bottom you should see a small table with **camera** and **editor**. That's it. Every worker keeps the role they had.
+
+(It is also inside `supabase/worker-setup.sql` as PART 8, so a fresh setup gets it automatically.)
+
+### 2. Update the "admin-create-worker" function
+1. Supabase → **Edge Functions** → click **admin-create-worker**.
+2. Open **Code** (or the editor), select everything and delete it.
+3. Open `supabase/functions/admin-create-worker/index.ts`, copy everything, paste it in.
+4. Click **Deploy**. (You do not need to change any setting or secret.)
+
+### 3. Upload the new app files (GitHub, same as before)
+Upload the files from **`roles_update_changed_files_only.zip`** (or the full app). They replace the old ones. Then open the app and press **Ctrl+Shift+R** once.
+The version at the bottom of Settings should say **Roles update · multi-role workers · build 8**.
+
+### 4. Try it
+1. **Settings → Crew roles** → type `Drone`, choose *Works to the shoot day*, press **Add role**.
+2. **Workers → Edit** on someone → tick **Camera** and **Editor** (and Drone if you like) → **Save**. Their card shows every role.
+3. Add a new project (or edit one) → **Assign crew** → pick that worker. Their own roles are listed first in the role box. Choose the role for this project and set the pay.
+4. Log in as that worker: the header shows all their roles, and each job shows the role it was assigned for.
+
+### 5. (Optional but recommended) run the security proof again
+Open `supabase/worker-tests.sql` in the SQL Editor and run it. It must say **ALL 82 CHECKS PASSED** (9 new checks cover the roles list).
+
+### Good to know
+- **Camera** and **Editor** are built in: you can rename them but not remove them.
+- A role can't be removed while a worker still has it or a job still uses it. The app tells you which.
+- **Works to the shoot day / deadline** decides which date the worker sees first (and the badge colour). Editing-type roles (Editor, Colorist) → *deadline*. Filming-type roles → *shoot day*.
+- If one person does camera **and** editing on the same project, they get **one** job: pick the role for that project and type the combined pay.
+- The suggested pay still splits the "labour" share between shoot-day roles and the "editing" share between deadline roles. You can always type your own amount.
+
+### If something goes wrong
+- *Settings → Crew roles says the table is missing* → step 1 wasn't run yet.
+- *Adding a worker says "Unknown role" or "Could not check the roles"* → step 1 wasn't run, or step 2 (deploy) wasn't done.
+- *Old screen / role boxes missing* → press Ctrl+Shift+R, or check the new files were uploaded.
+
+### What changed (build 8)
+- New: `js/roles.js`, `APP-NOTES.md`. Changed: Workers page, Settings page, crew form, worker screens, `admin-create-worker`, `worker-setup.sql` (PART 8), `worker-tests.sql` (82 checks).
+- Tested on a real Postgres database, with the Deno function tests and the simulated browser tests (all suites passed).

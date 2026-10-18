@@ -60,7 +60,7 @@ insert into public.profiles (user_id, role, name, email, active, job_role) value
   ('bbbbbbbb-7e57-4000-8000-000000000003', 'worker', 'WT Worker Off', 'workerOff@wt-test.invalid', true, 'camera');
 
 -- "probe" rows: stand-ins for your private data, so we can prove a worker cannot touch them
-insert into public.app_data (key, value, user_id) values ('__wt_probe__', '{"secret":"admin only"}', 'aaaaaaaa-7e57-4000-8000-000000000001');
+insert into public.app_data (key, value) values ('__wt_probe__', '{"secret":"admin only"}');
 do $$ begin
   if to_regclass('public.project_status') is not null then
     insert into public.project_status (track_code) values ('__wt_probe__');
@@ -394,14 +394,17 @@ begin
   reset role;
   select count(*) into n from public.push_reminders where user_id in (WA::uuid, WB::uuid);
   perform pg_temp.rec('9 notifications', 'a good number of notifications were created to inspect', n >= 8, n::text);
-  select count(*) into n from public.push_reminders
-   where coalesce(title, '') || ' ' || coalesce(body, '') || ' ' || coalesce(url, '') || ' ' || coalesce(tag, '')
+  -- only the test workers' notifications are inspected (your own admin calendar reminders may legitimately say "payment")
+  select count(*), left(string_agg('[' || type || '] ' || coalesce(title, '') || ' / ' || coalesce(body, '') || ' / ' || coalesce(url, '') || ' / ' || coalesce(tag, ''), '  ||  '), 300)
+    into n, msg from public.push_reminders
+   where user_id in (WA::uuid, WB::uuid, WO::uuid)
+     and coalesce(title, '') || ' ' || coalesce(body, '') || ' ' || coalesce(url, '') || ' ' || coalesce(tag, '')
          ~* '(123457|111113|987653|424243|777771|55551|₹|rs\.? ?[0-9]|rupee|\mpay|paid|price|phone|mobile|invoice|NOTE-FOR-CREW)';
-  perform pg_temp.rec('9 notifications', 'no notification mentions pay, price, phone, invoice or crew notes', n = 0, n::text);
+  perform pg_temp.rec('9 notifications', 'no notification mentions pay, price, phone, invoice or crew notes', n = 0, case when n = 0 then '0' else n || ' matched: ' || msg end);
   select count(*) into n from information_schema.columns
    where table_schema = 'public' and table_name = 'worker_tasks' and column_name ~* '(phone|mobile|contact|price|budget|invoice|whatsapp|email)';
   perform pg_temp.rec('9 notifications', 'the worker jobs table has NO client phone / price / invoice column at all', n = 0, n::text);
-  select count(*) into n from public.push_reminders where url !~ '^\./index\.html(\?page=[a-z]+)?$';
+  select count(*) into n from public.push_reminders where user_id in (WA::uuid, WB::uuid, WO::uuid) and url !~ '^\./index\.html(\?page=[a-z]+)?$';
   perform pg_temp.rec('9 notifications', 'every notification link stays inside the app', n = 0, n::text);
 
   -- one worker never gets another worker's notifications / phones / choices
@@ -426,6 +429,52 @@ begin
   perform pg_temp.rec('9 notifications', 'worker A cannot change worker B''s notification choices', n = 0, n::text);
 exception when others then
   perform pg_temp.rec('make every kind of notification happen: ', 'THIS PART STOPPED WITH AN ERROR', false, sqlerrm);
+end $$;
+
+do $$
+declare
+  ADM constant text := 'aaaaaaaa-7e57-4000-8000-000000000001';
+  WA  constant text := 'bbbbbbbb-7e57-4000-8000-000000000001';
+  WO  constant text := 'bbbbbbbb-7e57-4000-8000-000000000003';
+  n int; ok boolean;
+begin
+  -- ===================================================================
+  -- 10. crew roles — workers may only READ the role names
+  -- =====================================================================
+  if to_regclass('public.crew_roles') is null then
+    perform pg_temp.rec('10 crew roles', 'roles table exists (run PART 8)', false, 'crew_roles is missing');
+    return;
+  end if;
+  perform pg_temp.as_user(ADM, 'authenticated');
+  insert into public.crew_roles (key, label, main_date) values ('wt-probe', 'WT Probe Role', 'shoot');
+  select count(*) into n from public.crew_roles where key = 'wt-probe';
+  perform pg_temp.rec('10 crew roles', 'ADMIN can add a role (so the checks below mean something)', n = 1, n::text);
+  perform pg_temp.as_user(WA, 'authenticated');
+  select count(*) into n from public.crew_roles;
+  perform pg_temp.rec('10 crew roles', 'active worker can read the role names', n >= 3, n::text);
+  begin insert into public.crew_roles (key, label) values ('wt-evil', 'Evil'); ok := false; exception when others then ok := true; end;
+  perform pg_temp.rec('10 crew roles', 'worker cannot add a role', ok);
+  update public.crew_roles set label = 'Hacked'; get diagnostics n = row_count;
+  perform pg_temp.rec('10 crew roles', 'worker cannot rename a role', n = 0, n::text);
+  delete from public.crew_roles; get diagnostics n = row_count;
+  perform pg_temp.rec('10 crew roles', 'worker cannot remove a role', n = 0, n::text);
+  begin update public.profiles set job_roles = array['camera', 'editor'] where user_id = WA::uuid; get diagnostics n = row_count; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('10 crew roles', 'worker cannot change their own roles', ok);
+  perform pg_temp.as_user(WO, 'authenticated');
+  select count(*) into n from public.crew_roles;
+  perform pg_temp.rec('10 crew roles', 'deactivated worker cannot read roles', n = 0, n::text);
+  perform pg_temp.as_user(null, 'anon');
+  begin select count(*) into n from public.crew_roles; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('10 crew roles', 'signed-out visitor cannot read roles', ok);
+  perform pg_temp.as_user(ADM, 'authenticated');
+  delete from public.crew_roles where key = 'wt-probe';
+  begin delete from public.crew_roles where key = 'camera'; ok := false; exception when others then ok := true; end;
+  perform pg_temp.rec('10 crew roles', 'even the admin cannot remove the built-in Camera role', ok);
+  reset role;
+exception when others then
+  reset role;
+  delete from public.crew_roles where key like 'wt-%';
+  perform pg_temp.rec('10. crew roles', 'THIS PART STOPPED WITH AN ERROR', false, sqlerrm);
 end $$;
 
 do $$

@@ -10,9 +10,11 @@
 
 import { supabase } from './cloud.js';
 import { splitPrice } from './pricing.js';
+import { CREW_ROLES, ROLE_LABEL, roleMainDate, loadRoles } from './roles.js';
 
-export const CREW_ROLES = ['camera', 'editor'];
-export const CREW_ROLE_LABEL = { camera: 'Camera', editor: 'Editor' };
+// The role list lives in roles.js (Camera, Editor + anything added in Settings).
+export { CREW_ROLES };
+export const CREW_ROLE_LABEL = ROLE_LABEL;
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const clean = (v) => { const s = String(v ?? '').trim(); return s === '' ? null : s; };
@@ -20,24 +22,25 @@ const hhmm = (t) => (t ? String(t).slice(0, 5) : null);
 
 // ---------------------------------------------------------------------------
 // Suggested pay, from the editable price split (Price Distributor):
-//   labour share   -> shared equally between the CAMERA people
-//   editing share  -> shared equally between the EDITORS
+//   labour share   -> shared equally between the people whose role works to the
+//                     SHOOT day (Camera, Drone, ...)
+//   editing share  -> shared equally between the people whose role works to the
+//                     DEADLINE (Editor, Colorist, ...)
 // `roles` is the list of roles on this project, e.g. ['camera','camera','editor'].
 // Returns one suggested amount per entry, in the same order. It is only a
 // suggestion — the admin can type any amount.
 export function suggestPays({ amount, distribution, referral = false, roles }) {
   const total = Math.max(0, num(amount));
   if (!total || !roles.length) return roles.map(() => 0);
-  const cameras = roles.filter((r) => r === 'camera').length;
-  const editors = roles.filter((r) => r === 'editor').length;
+  const isShoot = (r) => roleMainDate(r) === 'shoot';
+  const cameras = roles.filter(isShoot).length;
+  const editors = roles.length - cameras;
   const split = splitPrice(total, distribution, { referral, crew: cameras || 1 });
   const share = (key) => (split.rows.find((r) => r.key === key) || {}).amount || 0;
   const labour = share('labour');
   const editing = share('editing');
   return roles.map((r) => {
-    if (r === 'camera') return Math.round(labour / cameras);
-    if (r === 'editor') return Math.round(editing / editors);
-    return 0;
+    return isShoot(r) ? Math.round(labour / cameras) : Math.round(editing / editors);
   });
 }
 
@@ -46,7 +49,7 @@ export function validateCrew(rows, nameOf = () => 'This worker') {
   const seen = new Set();
   for (const r of rows) {
     if (!r.worker_id) return 'Pick a worker for every crew row, or remove the empty row.';
-    if (!CREW_ROLES.includes(r.role)) return 'Pick a role (Camera or Editor) for every crew row.';
+    if (!CREW_ROLES.includes(r.role)) return 'Pick a role for every crew row.';
     const pay = r.pay === '' || r.pay === null || r.pay === undefined ? 0 : Number(r.pay);
     if (!Number.isFinite(pay) || pay < 0) return `Enter a valid pay amount for ${nameOf(r.worker_id)}.`;
     if (seen.has(r.worker_id)) return `${nameOf(r.worker_id)} is listed twice. A worker can have only one role per project.`;
@@ -110,9 +113,10 @@ function friendly(error) {
 }
 
 export async function loadWorkers() {
+  await loadRoles(supabase);       // the role list (Camera, Editor + your own); keeps the old list if it can't be read
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_id, name, email, job_role, active')
+    .select('*')
     .eq('role', 'worker')
     .order('name', { ascending: true });
   if (error) throw friendly(error);

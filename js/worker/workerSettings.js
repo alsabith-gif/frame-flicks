@@ -5,7 +5,7 @@ import { escHtml } from '../format.js';
 import { logout, setNewPassword } from '../cloud.js';
 import * as facelock from '../facelock.js';
 import { showToast } from '../toast.js';
-import { ROLE_LABEL } from './workerView.js';
+import { rolesText } from '../roles.js';
 import { mountNotifyPanel } from './workerNotify.js';
 
 export function renderWorkerSettings(root, { profile }) {
@@ -15,7 +15,7 @@ export function renderWorkerSettings(root, { profile }) {
       <h2 class="wa-h2">Account</h2>
       <div class="wa-kv"><span>Name</span><b>${escHtml(profile.name || '')}</b></div>
       <div class="wa-kv"><span>Email</span><b>${escHtml(profile.email || '')}</b></div>
-      <div class="wa-kv"><span>Role</span><b>${escHtml(ROLE_LABEL[profile.job_role] || '—')}</b></div>
+      <div class="wa-kv"><span>Role</span><b>${escHtml(rolesText(profile) || '—')}</b></div>
     </section>
 
     <section class="wa-panel" id="waNotifyPanel"></section>
