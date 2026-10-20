@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 1 · worker app with 5 tabs · build 9 (18 Oct 2026)
+**Current version:** Phase 2 · contact admin & feedback · build 10 (20 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -17,12 +17,15 @@
 - Packages (A1): my choice — items with counts, revisions, delivery days, add-ons, price, one-time/monthly, active/archived; internal screens only; keep the old monthly packages as defaults.
 - Not answered, using defaults: money page = own expenses + partial payments (yes to both); feedback = text + optional mood, admin can delete, date only.
 
-## Next: Phase 2 — Contact admin + anonymous feedback
-1. SQL PART 9: `crew_contact` (admin write; admin + active workers read), `feedback` table with NO user id/name/email/exact time (date only),
-   `submit_feedback(message, mood)` SECURITY DEFINER (checks active worker, does not store auth.uid(), trims/validates length), no worker select/update/delete.
-2. Admin Settings card for the call number; admin **Feedback** page (newest first, date only, unread marker, mark read, delete).
-3. Worker Profile: "Call admin" button (`tel:`; hidden if no number) and a feedback form with an honest note about anonymity limits.
-4. Tests: SQL (worker can't read feedback, nothing identifying stored), browser, add checks to `worker-tests.sql`; bump version; update APP-NOTES + SETUP.
+## Phase 2 (build 10) — done
+PART 9 SQL (`crew_contact`, `feedback`, `submit_feedback`), worker Profile (Call admin + feedback, with an honest anonymity note),
+admin Settings contact box, admin Feedback page. Security proof now 95 checks. Mood values: good / okay / bad.
+
+## Next: Phase 3 — Worker detail page (A2) + proper earnings view per worker
+Click a worker on the Workers page → full page: name, email, roles, status, last login, actions (edit, send code, reset access,
+deactivate/reactivate — NO delete), job counts, every job with filters (project, dates, status, pay, paid on), earnings
+(earned / paid / owed) + pay history, mark paid / unpaid with a date (reuse `pay.js` + `workers.js` pay modal). Never show feedback there.
+Admin-only data; no new SQL expected. Then update tests, APP-NOTES, SETUP, version.
 
 ## Notes
-- Test rig lives only in the build session (not in the app zip). `roles_update_tests.zip` / the latest tests zip has it: SQL suites, Deno, vapid, browser t1–t13.
+- Test rig lives only in the build session. The latest tests zip has it: SQL suites, Deno, vapid, browser t1–t14.

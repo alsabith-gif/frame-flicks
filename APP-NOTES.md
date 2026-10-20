@@ -5,7 +5,7 @@
 > Read it top to bottom before changing anything. **Whoever changes the app must also update this file in the
 > same change** (see "How to keep this file up to date" at the bottom).
 
-- **App version when this was last updated:** Phase 1 · worker app with 5 tabs · build 9 · 18 Oct 2026 (see `js/version.js`)
+- **App version when this was last updated:** Phase 2 · contact admin & feedback · build 10 · 20 Oct 2026 (see `js/version.js`)
 - **Owner:** one person (the "admin"), a freelance video editor / small studio in India (times are IST, `Asia/Kolkata`).
   The owner is **not a programmer**. Explain things in plain words, step by step, and say exactly what to click.
 
@@ -19,7 +19,7 @@
   client analysis, price split ("Price Distributor"), invoice maker, calendar with push reminders, shareable
   client progress links, and a **crew system**: add workers, assign them to projects with a role and pay, see their
   progress, and mark them paid.
-- **Worker side (the crew):** a separate, light app with **five bottom tabs**: **Home** (today's jobs, next shoot, overdue, own earnings snapshot), **Calendar** (read-only), **Works** (job list; change status To do / In progress / Done; own pay on each card), **Earnings** (own pay only), **Profile** (account, notifications, Face ID, password, log out). A worker sees **only their own jobs and own pay**.
+- **Worker side (the crew):** a separate, light app with **five bottom tabs**: **Home** (today's jobs, next shoot, overdue, own earnings snapshot), **Calendar** (read-only), **Works** (job list; change status To do / In progress / Done; own pay on each card), **Earnings** (own pay only), **Profile** (**Call admin** button, notifications, **anonymous feedback**, Face ID, password, log out). A worker sees **only their own jobs and own pay**.
 - **Client side:** `track.html` — a public read-only page where a client sees their project's stage via a private link.
 
 Everything is **vanilla JavaScript (ES modules), HTML and CSS. There is no build step, no framework, no bundler.**
@@ -107,19 +107,19 @@ Supabase table `app_data` (key/value rows) by `js/cloud.js`. A worker's device n
 `prospects`, `goals`, `analysis`, `income` (the **Dashboard**), `clientAnalysis`, `clientDirectory`, `projectLibrary`,
 `scripts`, `followup`, `calendar`, `invoice`, `priceSplit`, `contentTypes`, `tips`,
 **`workers`** (add/edit/deactivate workers with role tick-boxes, per-worker earnings, all crew jobs, mark paid),
-**`settings`** (mode switcher, Face ID, notifications, **Crew roles manager**, About, logout).
+**`feedback`** (admin-only: crew feedback, date + mood only, mark read, delete), **`settings`** (mode switcher, Face ID, notifications, **Crew roles manager**, **crew contact number**, About, logout).
 Each has a matching `pages/<name>.html` and `css/<name>.css`.
 
 ### `js/worker/` (the worker app — a separate, light shell)
-`workerApp.js` (shell, 5 tabs, refresh loop), `workerHome.js` (Home tab), `myWork.js` (Works tab), `workerCalendar.js`, `myEarnings.js`, `workerSettings.js` (the Profile tab),
+`workerApp.js` (shell, 5 tabs, refresh loop), `workerHome.js` (Home tab), `myWork.js` (Works tab), `workerCalendar.js`, `myEarnings.js`, `workerSettings.js` (the Profile tab), `workerContact.js` (Call-admin button + feedback form),
 `workerNotify.js` (notification choices), `workerData.js` (fetch own jobs, offline cache, `worker_set_status`),
 `workerView.js` (pure date/grouping helpers, `keyDate`), `earningsCalc.js` (pure money rules, in paise).
 
 ### `supabase/`
 | File | Purpose |
 |---|---|
-| `worker-setup.sql` | **The whole database setup, in numbered PARTs** (safe to run twice): 1A profiles+admin, 1B lockdown, 1C project_status, 2 worker accounts, 3 jobs, 4 worker status function, 5 pay guard, 6A push, 6B cron sender, 7 final tightening, **8 crew roles**. |
-| `worker-tests.sql` | **Security proof.** Makes pretend users, tries things a worker must not do, deletes everything after. Every row must say PASS (82 checks). |
+| `worker-setup.sql` | **The whole database setup, in numbered PARTs** (safe to run twice): 1A profiles+admin, 1B lockdown, 1C project_status, 2 worker accounts, 3 jobs, 4 worker status function, 5 pay guard, 6A push, 6B cron sender, 7 final tightening, **8 crew roles**, **9 contact number + anonymous feedback**. |
+| `worker-tests.sql` | **Security proof.** Makes pretend users, tries things a worker must not do, deletes everything after. Every row must say PASS (95 checks). |
 | `functions/admin-create-worker/index.ts` | The ONLY place worker accounts are created/changed (service-role key, admin-only). Actions: create, update, set_active, resend_code, reset_access, list_status. |
 | `functions/send-reminders/index.ts` | Sends due push reminders (Verify JWT **off**; protected by the `x-cron-secret` header). Needs secrets `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`. |
 | `push-setup.sql` | Superseded; do not run. |
@@ -129,6 +129,8 @@ Each has a matching `pages/<name>.html` and `css/<name>.css`.
 | Table | Holds | Who can access |
 |---|---|---|
 | `profiles` | One row per login: `user_id`, `role` (admin/worker), `name`, `email`, `active`, `job_role` (main role, kept in sync), `job_roles text[]` (all roles; first = main) | Admin: all. Worker: own row (read). Only the edge function writes workers. |
+| `crew_contact` | ONE row: `phone` the crew's "Call admin" button dials | Admin: all. Active workers: read only. |
+| `feedback` | `message`, optional `mood` (good/okay/bad), `day` (date only), `is_read`, `seq` (order). **No user id, name, email or time** | Admin only (read, mark read, delete). Workers cannot read it. New rows only via `submit_feedback`. |
 | `crew_roles` | The role list: `key`, `label`, `main_date` (`shoot`/`deadline`), `builtin`, `sort_order` | Admin: all. Active workers: read only. |
 | `worker_tasks` | One job per (project, worker): role, title, client name, location, dates, notes, `pay_amount`, `status`, `pay_status`, `paid_on`, `done_at` | Admin: all. Worker: read own. Writes only by admin (and status via `worker_set_status`). |
 | `app_data` | Admin's business data (key/value). *No `user_id` column.* | Admin only. |
@@ -141,7 +143,7 @@ Each has a matching `pages/<name>.html` and `css/<name>.css`.
 `worker_set_notif_prefs`, `admin_revoke_sessions`, `worker_tasks_pay_guard` (Done-before-paid, paid amount locked,
 `paid_on` in India time), `rebuild_task_reminders` / `rebuild_worker_reminders` / `push_worker_alert` /
 `worker_wants` / `worker_tasks_notify` / `profiles_notify_active` (notification building),
-`crew_roles_guard` (built-ins permanent, roles in use can't be removed), `profiles_sync_roles` (keeps
+`submit_feedback` (security definer: checks the caller is an active worker, then stores the message **without** `auth.uid()`), `crew_roles_guard` (built-ins permanent, roles in use can't be removed), `profiles_sync_roles` (keeps
 `job_roles`/`job_role` consistent and validates roles exist).
 
 **Pay maths** is in **paise** (integers). Earned = Paid + Still owed. A job can only be marked paid when Done; once
@@ -155,7 +157,7 @@ paid its amount is locked (undo paid → change → mark paid again).
   sign-in ban, then all sessions revoked.
 - Notifications are built by the database from job rows and never include pay/phone/price; the sender claims a
   reminder before sending and skips deactivated users.
-- Proof: `supabase/worker-tests.sql` (82 checks) + the test suites in §9.
+- Proof: `supabase/worker-tests.sql` (95 checks) + the test suites in §9.
 
 ## 7. Crew roles (Roles update)
 
@@ -187,11 +189,11 @@ requires "Add to Home Screen" first.
 
 | Suite | What it proves |
 |---|---|
-| `worker-tests.sql` (in Supabase) | 82 security checks on the owner's real database. |
-| `sql_phase4/5/6_tests.sql`, `sql_phase8_tests.sql` | Worker status function, pay guard, reminders/notifications, crew roles — on a real Postgres 16 with a fake Supabase schema (`fake_supabase.sql`, `stubs.sql`, `chain.sh`). |
+| `worker-tests.sql` (in Supabase) | 95 security checks on the owner's real database. |
+| `sql_phase4/5/6_tests.sql`, `sql_phase8_tests.sql`, `sql_phase9_tests.sql` | Worker status function, pay guard, reminders/notifications, crew roles — on a real Postgres 16 with a fake Supabase schema (`fake_supabase.sql`, `stubs.sql`, `chain.sh`). |
 | `deno/test.js`, `deno/test_admin.js` | `send-reminders` and `admin-create-worker` with fake supabase / web-push. |
 | `vapid/vapid_test.mjs` | Push keys and encryption with Node `web-push`. |
-| `browser/t1…t13` | jsdom tests with a fake `cloud.js` (`cloud_stub.js`): worker app, admin pages, pay, crew lock, delete warning, notifications, access rules (`t11`), roles (`t12`), Home tab (`t13`). |
+| `browser/t1…t14` | jsdom tests with a fake `cloud.js` (`cloud_stub.js`): worker app, admin pages, pay, crew lock, delete warning, notifications, access rules (`t11`), roles (`t12`), Home tab (`t13`), contact + feedback (`t14`). |
 
 When you change behaviour: add/adjust a test, run **all** suites, and only then hand over files.
 
@@ -211,13 +213,14 @@ When you change behaviour: add/adjust a test, run **all** suites, and only then 
 | Phase 4 | Oct 2026 | Workers change job status (`worker_set_status`), `done_at`. |
 | Phase 5 | Oct 2026 | Earnings, marking paid, pay guard trigger (PART 5). |
 | Phase 6 | Oct 2026 | Push notifications, cron sender (PART 6A/6B), edge function `send-reminders`. |
-| Final (build 7) | 14 Oct 2026 | PART 7, security proof `worker-tests.sql` (82 checks), access tests. |
+| Final (build 7) | 14 Oct 2026 | PART 7, security proof `worker-tests.sql` (95 checks), access tests. |
+| Phase 2 (build 10) | 20 Oct 2026 | PART 9 (`crew_contact`, `feedback`, `submit_feedback`); worker Profile: Call admin + anonymous feedback; admin Settings: crew contact number; admin Feedback page; proof now 95 checks. |
 | Phase 1 (build 9) | 18 Oct 2026 | Worker app has 5 tabs (Home, Calendar, Works, Earnings, Profile); new Home tab (`workerHome.js`); own pay on Works cards; Settings renamed Profile (old `?page=settings` links still work). No SQL. |
 | Roles update (build 8) | 18 Oct 2026 | Multi-role workers; admin-defined roles (Settings → Crew roles, PART 8, `crew_roles`, `job_roles`); `roles.js`; `main_date` rule replaces hard-coded editor logic; `admin-create-worker` takes `job_roles`; this notes file added. |
 
 ## 11b. Roadmap (the owner's "big update" plan)
-Done: worker status, earnings and paying, notifications, security proof, multi-role workers, **Phase 1 (5 tabs)**.
-Next, in this order (owner confirmed): 2 Contact admin (call only) + anonymous feedback · 3 Worker detail page ·
+Done: worker status, earnings and paying, notifications, security proof, multi-role workers, Phase 1 (5 tabs), **Phase 2 (contact admin + feedback)**.
+Next, in this order (owner confirmed): 3 Worker detail page ·
 4 Projects page + project detail (renames "Project Library") · 5 Remove the Content Types *page* (keep the choices in the
 project form) · 6 Money tracking (own expenses + partial payments) · 7 Package builder · 8 Extend the security proof.
 **Dropped by the owner: "Delete worker"** (too risky for past pay records). See `HANDOFF.md`.

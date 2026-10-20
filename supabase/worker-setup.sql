@@ -1044,3 +1044,109 @@ end $$;
 -- Check: the built-in roles, and which roles each worker has
 select key, label, main_date, builtin from public.crew_roles order by sort_order, label;
 select email, job_roles from public.profiles where role = 'worker' order by email;
+
+-- =====================================================================
+-- PART 9 — contact number + anonymous feedback   (Phase 2: run once, after PART 8)
+-- 1) crew_contact: the number your workers can call (you type it in Settings).
+--    Only you can change it; active workers can read it. Nobody else.
+-- 2) feedback: workers can tell you what they feel, WITHOUT you being able to
+--    tell who wrote it:
+--      • the table has NO user id, name, email or exact time (only the date)
+--      • a worker can only add a message through the function submit_feedback(),
+--        which checks they are an active worker but DOES NOT SAVE who they are
+--      • no worker can read, change or delete any feedback (not even their own)
+--      • only you can read it, mark it read, and delete it
+--    Honest limit: with a small crew you may still guess from the words or the
+--    day, and the owner of the Supabase project could in theory dig through
+--    server logs. The app promises nothing stronger than "not saved, not shown".
+-- Safe to run twice.
+-- =====================================================================
+
+create table if not exists public.crew_contact (
+  id         integer primary key default 1 check (id = 1),     -- exactly one row
+  phone      text check (phone is null or phone ~ '^[0-9+() -]{5,20}$'),
+  updated_at timestamptz not null default now()
+);
+insert into public.crew_contact (id, phone) values (1, null) on conflict (id) do nothing;
+
+alter table public.crew_contact enable row level security;
+revoke all on public.crew_contact from anon;
+
+do $$
+declare p record;
+begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'crew_contact' loop
+    execute format('drop policy %I on public.crew_contact', p.policyname);
+  end loop;
+end $$;
+
+create policy "crew_contact: admin all" on public.crew_contact
+  for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+create policy "crew_contact: active workers read" on public.crew_contact
+  for select to authenticated using ((select public.is_active_worker()));
+
+create table if not exists public.feedback (
+  id         uuid primary key default gen_random_uuid(),
+  seq        bigint generated always as identity,                 -- only to show newest first
+  message    text not null check (char_length(btrim(message)) between 1 and 2000),
+  mood       text check (mood is null or mood in ('good', 'okay', 'bad')),
+  day        date not null default ((now() at time zone 'Asia/Kolkata')::date),   -- the DATE only, never the time
+  is_read    boolean not null default false
+);
+
+alter table public.feedback enable row level security;
+revoke all on public.feedback from anon, authenticated;
+grant select, delete on public.feedback to authenticated;
+grant update (is_read) on public.feedback to authenticated;     -- the admin can only mark read; the text can never be edited
+
+do $$
+declare p record;
+begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'feedback' loop
+    execute format('drop policy %I on public.feedback', p.policyname);
+  end loop;
+end $$;
+
+create policy "feedback: admin read" on public.feedback
+  for select to authenticated using ((select public.is_admin()));
+create policy "feedback: admin mark read" on public.feedback
+  for update to authenticated using ((select public.is_admin())) with check ((select public.is_admin()));
+create policy "feedback: admin delete" on public.feedback
+  for delete to authenticated using ((select public.is_admin()));
+-- (no insert policy and no worker policy at all: workers have no direct access)
+
+create or replace function public.submit_feedback(p_message text, p_mood text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_msg text := btrim(coalesce(p_message, ''));
+begin
+  if auth.uid() is null then
+    raise exception 'You are not signed in.' using errcode = '28000';
+  end if;
+  if not public.is_active_worker() then
+    raise exception 'This account cannot send feedback.' using errcode = '42501';
+  end if;
+  if char_length(v_msg) < 1 then
+    raise exception 'Write something first.' using errcode = '22023';
+  end if;
+  if char_length(v_msg) > 2000 then
+    raise exception 'Please keep it under 2000 characters.' using errcode = '22023';
+  end if;
+  if p_mood is not null and p_mood not in ('good', 'okay', 'bad') then
+    raise exception 'Invalid mood.' using errcode = '22023';
+  end if;
+  -- NOTE: auth.uid() is used above only to check the caller. It is NOT stored.
+  insert into public.feedback (message, mood) values (v_msg, p_mood);
+end;
+$$;
+revoke all on function public.submit_feedback(text, text) from public, anon, authenticated;
+grant execute on function public.submit_feedback(text, text) to authenticated;
+
+-- Check: the contact row, the feedback columns (there must be NO user/name/email/time column) and the function
+select id, phone from public.crew_contact;
+select column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = 'feedback' order by ordinal_position;
+select proname from pg_proc where proname = 'submit_feedback';

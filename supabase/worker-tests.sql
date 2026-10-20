@@ -15,6 +15,7 @@
 
 -- ---------- 0. clean up leftovers from an earlier run that was interrupted
 delete from public.app_data       where key        = '__wt_probe__';
+delete from public.feedback       where message like 'WT-FB%';
 do $$ begin
   if to_regclass('public.project_status') is not null then
     delete from public.project_status where track_code = '__wt_probe__';
@@ -475,6 +476,63 @@ exception when others then
   reset role;
   delete from public.crew_roles where key like 'wt-%';
   perform pg_temp.rec('10. crew roles', 'THIS PART STOPPED WITH AN ERROR', false, sqlerrm);
+end $$;
+
+do $$
+declare
+  ADM constant text := 'aaaaaaaa-7e57-4000-8000-000000000001';
+  WA  constant text := 'bbbbbbbb-7e57-4000-8000-000000000001';
+  WO  constant text := 'bbbbbbbb-7e57-4000-8000-000000000003';
+  n int; ok boolean; cols text;
+begin
+  -- ===================================================================
+  -- 11. contact number + anonymous feedback
+  -- =====================================================================
+  if to_regclass('public.feedback') is null or to_regclass('public.crew_contact') is null then
+    perform pg_temp.rec('11 feedback', 'feedback + contact tables exist (run PART 9)', false, 'missing');
+    return;
+  end if;
+  perform pg_temp.as_user(WA, 'authenticated');
+  select count(*) into n from public.crew_contact;
+  perform pg_temp.rec('11 contact', 'active worker can read the contact number row', n = 1, n::text);
+  update public.crew_contact set phone = '000000'; get diagnostics n = row_count;
+  perform pg_temp.rec('11 contact', 'worker cannot change the contact number', n = 0, n::text);
+  perform pg_temp.as_user(WO, 'authenticated');
+  select count(*) into n from public.crew_contact;
+  perform pg_temp.rec('11 contact', 'deactivated worker cannot read the contact number', n = 0, n::text);
+
+  perform pg_temp.as_user(WA, 'authenticated');
+  perform public.submit_feedback('WT-FB probe message', 'okay');
+  perform pg_temp.rec('11 feedback', 'active worker can send feedback', true);
+  begin select count(*) into n from public.feedback; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('11 feedback', 'worker cannot read feedback (not even their own)', ok);
+  begin update public.feedback set is_read = true; get diagnostics n = row_count; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('11 feedback', 'worker cannot change feedback', ok);
+  begin delete from public.feedback; get diagnostics n = row_count; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('11 feedback', 'worker cannot delete feedback', ok);
+  begin insert into public.feedback (message) values ('WT-FB direct'); ok := false; exception when others then ok := true; end;
+  perform pg_temp.rec('11 feedback', 'worker cannot write to the feedback table directly', ok);
+  perform pg_temp.as_user(WO, 'authenticated');
+  begin perform public.submit_feedback('WT-FB deactivated', null); ok := false; exception when others then ok := true; end;
+  perform pg_temp.rec('11 feedback', 'deactivated worker cannot send feedback', ok);
+  perform pg_temp.as_user(null, 'anon');
+  begin perform public.submit_feedback('WT-FB anon', null); ok := false; exception when others then ok := true; end;
+  perform pg_temp.rec('11 feedback', 'signed-out visitor cannot send feedback', ok);
+
+  reset role;
+  select string_agg(column_name, ',' order by ordinal_position) into cols from information_schema.columns where table_schema = 'public' and table_name = 'feedback';
+  perform pg_temp.rec('11 feedback', 'the feedback table stores NO user id, name, email or time', cols = 'id,seq,message,mood,day,is_read', cols);
+  select count(*) into n from public.feedback f where f::text ~* (WA || '|workerA@|WT Worker A');
+  perform pg_temp.rec('11 feedback', 'the saved message holds nothing that identifies the writer', n = 0, n::text);
+  perform pg_temp.as_user(ADM, 'authenticated');
+  select count(*) into n from public.feedback where message = 'WT-FB probe message';
+  perform pg_temp.rec('11 feedback', 'ADMIN can read the feedback (so the checks above mean something)', n = 1, n::text);
+  reset role;
+  delete from public.feedback where message like 'WT-FB%';
+exception when others then
+  reset role;
+  delete from public.feedback where message like 'WT-FB%';
+  perform pg_temp.rec('11. feedback + contact', 'THIS PART STOPPED WITH AN ERROR', false, sqlerrm);
 end $$;
 
 do $$

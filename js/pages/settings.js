@@ -214,11 +214,42 @@ async function renderRoles(note = '') {
   }));
 }
 
+// ---- Contact number: what your crew's "Call admin" button dials ----
+const PHONE_OK = /^[0-9+() -]{5,20}$/;
+
+async function renderContact() {
+  const box = document.getElementById('contactCard');
+  if (!box) return;
+  const { data, error } = await supabase.from('crew_contact').select('phone').eq('id', 1);
+  const missing = error && (error.code === '42P01' || error.code === 'PGRST205');
+  const phone = (data && data[0] && data[0].phone) || '';
+  box.innerHTML = `<h2 class="settings-title">Crew contact number</h2>
+    <p class="settings-desc">Your workers get a <b>Call admin</b> button on their Profile tab that dials this number. Leave it empty to hide the button.</p>
+    ${error ? `<p class="settings-note">${escHtml(missing ? 'Run the Phase 2 SQL first (SETUP.md → Phase 2).' : 'Could not load: ' + error.message)}</p>` : ''}
+    <form id="contactForm" class="roles-add">
+      <input type="tel" id="contactPhone" maxlength="20" inputmode="tel" placeholder="e.g. +91 98765 43210" value="${escHtml(phone)}"${error ? ' disabled' : ''}>
+      <button type="submit" class="btn btn-primary btn-sm"${error ? ' disabled' : ''}>Save number</button>
+    </form>
+    <p class="settings-note" id="contactMsg"></p>`;
+  const form = box.querySelector('#contactForm');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = box.querySelector('#contactMsg');
+    const v = box.querySelector('#contactPhone').value.trim();
+    if (v && !PHONE_OK.test(v)) { msg.textContent = 'Use only numbers, +, spaces, ( ) and - (5 to 20 characters).'; return; }
+    const { error: err } = await supabase.from('crew_contact').update({ phone: v || null, updated_at: new Date().toISOString() }).eq('id', 1);
+    if (err) { msg.textContent = err.message || 'Could not save.'; return; }
+    showToast(v ? 'Number saved' : 'Number removed');
+    msg.textContent = '';
+  });
+}
+
 export function init() {
   const v = document.getElementById('appVersion');
   if (v) v.textContent = `Version: ${APP_VERSION} · ${APP_BUILD}`;
   renderNotifs();
   renderRoles();
+  renderContact();
   renderModeSwitcher();
   wireModeSwitcher();
   renderFaceLock();

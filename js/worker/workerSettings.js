@@ -7,6 +7,7 @@ import * as facelock from '../facelock.js';
 import { showToast } from '../toast.js';
 import { rolesText } from '../roles.js';
 import { mountNotifyPanel } from './workerNotify.js';
+import { mountContactPanel, mountFeedbackPanel } from './workerContact.js';
 
 export function renderWorkerSettings(root, { profile }) {
   const supported = facelock.isSupported();
@@ -17,6 +18,8 @@ export function renderWorkerSettings(root, { profile }) {
       <div class="wa-kv"><span>Email</span><b>${escHtml(profile.email || '')}</b></div>
       <div class="wa-kv"><span>Role</span><b>${escHtml(rolesText(profile) || '—')}</b></div>
     </section>
+
+    <section class="wa-panel" id="waContactPanel"></section>
 
     <section class="wa-panel" id="waNotifyPanel"></section>
 
@@ -39,11 +42,15 @@ export function renderWorkerSettings(root, { profile }) {
       </form>
     </section>
 
+    <section class="wa-panel" id="waFeedbackPanel"></section>
+
     <section class="wa-panel">
       <button class="btn btn-ghost wa-logout" id="waLogout">Log out</button>
     </section>`;
 
+  mountContactPanel(root.querySelector('#waContactPanel'));
   mountNotifyPanel(root.querySelector('#waNotifyPanel'));
+  mountFeedbackPanel(root.querySelector('#waFeedbackPanel'));
 
   if (supported) {
     const desc = root.querySelector('#waFaceDesc');

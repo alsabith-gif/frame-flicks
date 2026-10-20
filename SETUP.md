@@ -827,3 +827,48 @@ Upload the files from **`phase1_changed_files_only.zip`**. They replace the old 
 
 ### What changed (build 9)
 New `js/worker/workerHome.js`. Changed: `workerApp.js`, `myWork.js`, `myEarnings.js` (text), `workerSettings.js` (now "Profile"), `css/worker.css`, `version.js`, notes. A worker still only ever sees their own jobs and their own pay.
+
+
+---
+
+## Phase 2 — "Call admin" and anonymous feedback (build 10)
+
+What you get:
+- Workers get a **Call admin** button on their **Profile** tab (it dials the number you set).
+- Workers can send you **feedback**. You see the message, the date and an optional mood — **not who wrote it**.
+- A new **Feedback** page in your menu, and a **Crew contact number** box in your Settings.
+
+### 1. Run the Phase 2 SQL
+1. Supabase → **SQL Editor** → **New query**.
+2. Open **`phase2-part9.sql`**, copy everything, paste it, click **Run**. (If a box says "Potential issue detected", choose **Run and enable RLS**.)
+3. At the bottom you will see: one row for the contact number (empty for now), a list of the feedback columns — **there must be NO user, name, email or time column** — and `submit_feedback`.
+
+### 2. Upload the new app files (GitHub, same as before)
+Upload the files from **`phase2_changed_files_only.zip`** (replace the old ones), then press **Ctrl+Shift+R**. Settings should say **Phase 2 · contact admin & feedback · build 10**.
+
+### 3. Set your number
+Admin app → **Settings** → **Crew contact number** → type it (for example `+91 98765 43210`) → **Save number**.
+
+### 4. Test it (private window, logged in as your test worker)
+1. **Profile** tab → **Call admin** button shows your number (on a phone it starts a call).
+2. Scroll to **Feedback for the admin** → pick a mood (optional) → write a message → **Send feedback**. You should see "Thank you".
+3. In your admin window → **Feedback** (menu) → the message is there with a **● New** marker, the date and the mood. Try **Mark as read** and **Delete**.
+4. Empty the number in Settings and refresh the worker: the Call button disappears.
+
+### 5. Run the security proof again
+Open **`supabase/worker-tests.sql`** in the SQL Editor and run it. It must say **ALL 95 CHECKS PASSED** (13 new ones prove a worker cannot read feedback and nothing identifying is stored).
+
+### What "anonymous" means here — honestly
+- The app **does not save and does not show** who sent a message. The database table has no user, name, email or time — only the day.
+- But: with a small crew your words or the day might still make it obvious, and whoever runs the Supabase project could in theory look through the server's technical logs. The worker's screen says this too. Don't promise your crew more than "not saved, not shown".
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| Feedback page / Settings box says "run the Phase 2 SQL" | Step 1 not done yet. |
+| Worker can't send: "This account cannot send feedback" | That worker is deactivated. |
+| No **Call admin** button | You haven't saved a number (step 3), or refresh the worker's Profile tab. |
+| No **Feedback** in the menu | Files not fully uploaded (step 2) — Ctrl+Shift+R. |
+
+### What changed (build 10)
+New: `js/worker/workerContact.js`, `js/pages/feedback.js`, `pages/feedback.html`, `css/feedback.css`. Changed: worker Profile, admin Settings, router, menu, version, `worker-setup.sql` (PART 9), `worker-tests.sql` (95 checks).

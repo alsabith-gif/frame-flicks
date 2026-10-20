@@ -10,6 +10,7 @@ const PAGE_META = {
   contentTypes: { title: 'Content Types', addLabel: null },
   clientDirectory: { title: 'Client Directory', addLabel: null },
   workers: { title: 'Workers', addLabel: '+ Add Worker' },
+  feedback: { title: 'Feedback', addLabel: null },
   calendar: { title: 'Calendar', addLabel: null },
   invoice: { title: 'Invoice Maker', addLabel: null },
   priceSplit: { title: 'Price Distributor', addLabel: null },

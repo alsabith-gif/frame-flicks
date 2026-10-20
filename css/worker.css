@@ -302,3 +302,11 @@
 .wa-earn { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
 .wa-pill { padding: 6px 10px; border-radius: 999px; background: var(--surface-2, rgba(127,127,127,.1)); font-size: 13px; }
 .wa-pay .badge { margin-left: 4px; }
+
+/* Contact + feedback (Profile tab) */
+.wa-phone { font-weight: 400; opacity: .85; margin-left: 4px; }
+.wa-fb-limit { font-size: 12.5px; }
+.wa-moods { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
+.wa-mood { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: inherit; font-size: 14px; cursor: pointer; }
+.wa-mood.is-on { background: var(--accent-dim, rgba(127,127,127,.2)); border-color: var(--accent, currentColor); font-weight: 600; }
+#waFbText { width: 100%; box-sizing: border-box; }
