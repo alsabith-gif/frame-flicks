@@ -860,7 +860,7 @@ Open **`supabase/worker-tests.sql`** in the SQL Editor and run it. It must say *
 
 ### What "anonymous" means here — honestly
 - The app **does not save and does not show** who sent a message. The database table has no user, name, email or time — only the day.
-- But: with a small crew your words or the day might still make it obvious, and whoever runs the Supabase project could in theory look through the server's technical logs. The worker's screen says this too. Don't promise your crew more than "not saved, not shown".
+- But: with a small crew your words or the day might still make it obvious, and whoever runs the Supabase project could in theory look through the server's technical logs. Don't promise your crew more than "not saved, not shown".
 
 ### If something goes wrong
 | You see | Do this |
@@ -872,3 +872,36 @@ Open **`supabase/worker-tests.sql`** in the SQL Editor and run it. It must say *
 
 ### What changed (build 10)
 New: `js/worker/workerContact.js`, `js/pages/feedback.js`, `pages/feedback.html`, `css/feedback.css`. Changed: worker Profile, admin Settings, router, menu, version, `worker-setup.sql` (PART 9), `worker-tests.sql` (95 checks).
+
+
+---
+
+## Phase 3 — the worker detail page (build 11)
+
+**No SQL and no function changes. You only upload files.**
+(This update also removes the long warning text from the workers' feedback box, as you asked.)
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`phase3_changed_files_only.zip`**, replace the old ones, then press **Ctrl+Shift+R**. Settings should say **Phase 3 · worker detail page · build 11**.
+
+### 2. Try it (admin window)
+1. Open **Workers**. Every worker card now has an **Open** button (clicking the worker's name also works).
+2. The worker's own page shows:
+   - name, roles, Active/Deactivated, email, last login, and the buttons Edit, Send new code, Reset access, Deactivate / Reactivate;
+   - **Jobs**: counts (to do, in progress, done, overdue);
+   - **Earnings**: earned, paid, still owed, and the same figures month by month;
+   - **Pay history**: every payment with its date, newest first, and the total;
+   - **Every job** with filters (status, when, payment).
+3. Try **Mark all owed as paid** (pick a date) and, on a paid job, **Undo paid**. The page stays on this worker and updates at once.
+4. Press **← All workers** to go back.
+
+There is **no Delete** button (you chose not to have one). Feedback is never shown on this page.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| No **Open** button | Files not fully uploaded — upload again and press Ctrl+Shift+R. |
+| "Loading jobs…" stays | Press Refresh on the Workers page; check PART 3 / PART 4 SQL were run earlier. |
+
+### What changed (build 11)
+`js/pages/workers.js`, `pages/workers.html`, `css/workers.css` (detail page); `js/worker/workerContact.js`, `css/worker.css` (warning text removed); version, notes.

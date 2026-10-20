@@ -2,7 +2,7 @@
 //   • Contact admin: a "Call admin" button (tel:). Hidden if the admin has not set a number.
 //   • Feedback: the worker can tell the admin how they feel. It goes through the
 //     database function submit_feedback(), which checks the caller is an active worker
-//     but does NOT save who they are. The panel says honestly what that does and does not mean.
+//     but does NOT save who they are.
 
 import { escHtml } from '../format.js';
 import { supabase } from '../cloud.js';
@@ -43,7 +43,6 @@ export function mountFeedbackPanel(el) {
   el.innerHTML = `
     <h2 class="wa-h2">Feedback for the admin</h2>
     <p class="muted">Tell the admin how work is going or what could be better. <b>The app does not save or show who sent it.</b></p>
-    <p class="muted wa-fb-limit">Please know: in a small crew your words or the day could still give you away, and the person who runs the app's server could in theory look through its technical records. So don't write anything you would not want guessed.</p>
     <form id="waFbForm" autocomplete="off">
       <div class="wa-moods" role="group" aria-label="How are you feeling? (optional)">
         ${MOODS.map((m) => `<button type="button" class="wa-mood" data-mood="${m.id}" aria-pressed="false">${m.icon} ${m.label}</button>`).join('')}

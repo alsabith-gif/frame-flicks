@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 2 · contact admin & feedback · build 10 (20 Oct 2026)
+**Current version:** Phase 3 · worker detail page · build 11 (20 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -21,11 +21,17 @@
 PART 9 SQL (`crew_contact`, `feedback`, `submit_feedback`), worker Profile (Call admin + feedback, with an honest anonymity note),
 admin Settings contact box, admin Feedback page. Security proof now 95 checks. Mood values: good / okay / bad.
 
-## Next: Phase 3 — Worker detail page (A2) + proper earnings view per worker
-Click a worker on the Workers page → full page: name, email, roles, status, last login, actions (edit, send code, reset access,
-deactivate/reactivate — NO delete), job counts, every job with filters (project, dates, status, pay, paid on), earnings
-(earned / paid / owed) + pay history, mark paid / unpaid with a date (reuse `pay.js` + `workers.js` pay modal). Never show feedback there.
-Admin-only data; no new SQL expected. Then update tests, APP-NOTES, SETUP, version.
+## Phase 3 (build 11) — done
+Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
+Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
+
+## Next: Phase 4 — Projects page + project detail (A4)
+Rename "Project Library" → **Projects** everywhere users see it (keep the old `projectLibrary` route working). It lists ALL projects
+(like the Library grid today). Opening a project shows a full detail page: client, dates, stage + history, amount, payments, crew
+(who, role, pay, status, location, time, notes), services/content types, revisions, saved links, client progress link, invoice(s),
+price split, notes; edit/delete from there. Reuse existing data/logic (`getIncome`, `crew.js`, `tracklink.js`, `pricing.js`); do NOT
+copy the Dashboard. Admin-only. First do the inventory of where project data lives (`js/pages/income.js`, `storage.js`).
+Then: 5 remove Content Types *page* · 6 Money tracking · 7 Package builder · 8 extend proof. (Delete worker is dropped.)
 
 ## Notes
-- Test rig lives only in the build session. The latest tests zip has it: SQL suites, Deno, vapid, browser t1–t14.
+- Test rig lives only in the build session. The latest tests zip has it: SQL suites, Deno, vapid, browser t1–t15.

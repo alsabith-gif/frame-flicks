@@ -5,7 +5,7 @@
 > Read it top to bottom before changing anything. **Whoever changes the app must also update this file in the
 > same change** (see "How to keep this file up to date" at the bottom).
 
-- **App version when this was last updated:** Phase 2 · contact admin & feedback · build 10 · 20 Oct 2026 (see `js/version.js`)
+- **App version when this was last updated:** Phase 3 · worker detail page · build 11 · 20 Oct 2026 (see `js/version.js`)
 - **Owner:** one person (the "admin"), a freelance video editor / small studio in India (times are IST, `Asia/Kolkata`).
   The owner is **not a programmer**. Explain things in plain words, step by step, and say exactly what to click.
 
@@ -106,7 +106,7 @@ Supabase table `app_data` (key/value rows) by `js/cloud.js`. A worker's device n
 ### `js/pages/` (admin pages, one per sidebar item)
 `prospects`, `goals`, `analysis`, `income` (the **Dashboard**), `clientAnalysis`, `clientDirectory`, `projectLibrary`,
 `scripts`, `followup`, `calendar`, `invoice`, `priceSplit`, `contentTypes`, `tips`,
-**`workers`** (add/edit/deactivate workers with role tick-boxes, per-worker earnings, all crew jobs, mark paid),
+**`workers`** (add/edit/deactivate workers with role tick-boxes; each worker opens into a **detail page** — roles, status, last login, actions, job counts, earnings per month, pay history, every job with filters, mark paid / undo; no delete; never shows feedback — plus the all-crew jobs list),
 **`feedback`** (admin-only: crew feedback, date + mood only, mark read, delete), **`settings`** (mode switcher, Face ID, notifications, **Crew roles manager**, **crew contact number**, About, logout).
 Each has a matching `pages/<name>.html` and `css/<name>.css`.
 
@@ -193,7 +193,7 @@ requires "Add to Home Screen" first.
 | `sql_phase4/5/6_tests.sql`, `sql_phase8_tests.sql`, `sql_phase9_tests.sql` | Worker status function, pay guard, reminders/notifications, crew roles — on a real Postgres 16 with a fake Supabase schema (`fake_supabase.sql`, `stubs.sql`, `chain.sh`). |
 | `deno/test.js`, `deno/test_admin.js` | `send-reminders` and `admin-create-worker` with fake supabase / web-push. |
 | `vapid/vapid_test.mjs` | Push keys and encryption with Node `web-push`. |
-| `browser/t1…t14` | jsdom tests with a fake `cloud.js` (`cloud_stub.js`): worker app, admin pages, pay, crew lock, delete warning, notifications, access rules (`t11`), roles (`t12`), Home tab (`t13`), contact + feedback (`t14`). |
+| `browser/t1…t15` | jsdom tests with a fake `cloud.js` (`cloud_stub.js`): worker app, admin pages, pay, crew lock, delete warning, notifications, access rules (`t11`), roles (`t12`), Home tab (`t13`), contact + feedback (`t14`), worker detail page (`t15`). |
 
 When you change behaviour: add/adjust a test, run **all** suites, and only then hand over files.
 
@@ -214,13 +214,14 @@ When you change behaviour: add/adjust a test, run **all** suites, and only then 
 | Phase 5 | Oct 2026 | Earnings, marking paid, pay guard trigger (PART 5). |
 | Phase 6 | Oct 2026 | Push notifications, cron sender (PART 6A/6B), edge function `send-reminders`. |
 | Final (build 7) | 14 Oct 2026 | PART 7, security proof `worker-tests.sql` (95 checks), access tests. |
+| Phase 3 (build 11) | 20 Oct 2026 | Worker detail page on the Workers page (Open button / name link). Removed the long anonymity warning from the worker feedback screen (kept: "does not save or show who sent it"). No SQL. |
 | Phase 2 (build 10) | 20 Oct 2026 | PART 9 (`crew_contact`, `feedback`, `submit_feedback`); worker Profile: Call admin + anonymous feedback; admin Settings: crew contact number; admin Feedback page; proof now 95 checks. |
 | Phase 1 (build 9) | 18 Oct 2026 | Worker app has 5 tabs (Home, Calendar, Works, Earnings, Profile); new Home tab (`workerHome.js`); own pay on Works cards; Settings renamed Profile (old `?page=settings` links still work). No SQL. |
 | Roles update (build 8) | 18 Oct 2026 | Multi-role workers; admin-defined roles (Settings → Crew roles, PART 8, `crew_roles`, `job_roles`); `roles.js`; `main_date` rule replaces hard-coded editor logic; `admin-create-worker` takes `job_roles`; this notes file added. |
 
 ## 11b. Roadmap (the owner's "big update" plan)
-Done: worker status, earnings and paying, notifications, security proof, multi-role workers, Phase 1 (5 tabs), **Phase 2 (contact admin + feedback)**.
-Next, in this order (owner confirmed): 3 Worker detail page ·
+Done: worker status, earnings and paying, notifications, security proof, multi-role workers, Phase 1 (5 tabs), **Phase 2 (contact admin + feedback), **Phase 3 (worker detail page)**.
+Next, in this order (owner confirmed):
 4 Projects page + project detail (renames "Project Library") · 5 Remove the Content Types *page* (keep the choices in the
 project form) · 6 Money tracking (own expenses + partial payments) · 7 Package builder · 8 Extend the security proof.
 **Dropped by the owner: "Delete worker"** (too risky for past pay records). See `HANDOFF.md`.

@@ -10,7 +10,7 @@ import { showToast } from '../toast.js';
 import { escHtml } from '../format.js';
 import { localToday, fmtDay, fmtTime, relDay, STATUS_LABEL, STATUS_CLASS } from '../worker/workerView.js';
 import { summarize, groupByWorker, filterJobs, isOverdue, wasMarkedDoneRecently, fmtStamp } from '../crewOverview.js';
-import { summarizeEarnings } from '../worker/earningsCalc.js';
+import { summarizeEarnings, monthlyEarnings } from '../worker/earningsCalc.js';
 import { money, owedJobs, totalPay, canMarkPaid, isPaid, validatePaidDate, markPaid, markUnpaid } from '../pay.js';
 import { CREW_ROLES, ROLE_LABEL, loadRoles, workerRoles } from '../roles.js';
 
@@ -25,6 +25,14 @@ let tasksLoadedAt = null;
 let filters = { worker: '', status: '', when: '', pay: '' };
 const NO_FILTERS = { worker: '', status: '', when: '', pay: '' };
 let focusWired = false;
+let detailId = null;                          // the worker whose detail page is open (null = the list)
+let dFilters = { status: '', pay: '', when: '' };
+
+// "5 Oct 2026" from a plain YYYY-MM-DD date (no time zone shifting)
+function fmtFull(ymd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || ''));
+  return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '';
+}
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -80,6 +88,8 @@ function render() {
   const list = document.getElementById('wkList');
   const empty = document.getElementById('wkEmpty');
   if (!list) return;
+  if (detailId) { renderDetail(); return; }
+  showView();
   if (!workers.length) { list.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   const today = localToday();
@@ -87,7 +97,7 @@ function render() {
   list.innerHTML = `<div class="wk-grid">${workers.map((w) => `
     <div class="card wk-card${w.active ? '' : ' is-off'}" data-id="${escHtml(w.user_id)}">
       <div>
-        <div class="wk-name">${escHtml(w.name || 'Unnamed')}
+        <div class="wk-name"><a href="#" class="wk-name-link" data-act="open">${escHtml(w.name || 'Unnamed')}</a>
           ${workerRoles(w).length
             ? workerRoles(w).map((k) => `<span class="badge badge-purple">${escHtml(ROLE_LABEL[k] || k)}</span>`).join(' ')
             : '<span class="badge badge-purple">No role</span>'}
@@ -98,8 +108,9 @@ function render() {
         ${summaryHtml(w, today)}
       </div>
       <div class="wk-actions">
+        <button class="btn btn-primary btn-sm" data-act="open">Open</button>
         ${tasksLoaded && (groupByWorker(tasks)[w.user_id] || []).length ? '<button class="btn btn-ghost btn-sm" data-act="jobs">View jobs</button>' : ''}
-        ${tasksLoaded && owedJobs(tasks, w.user_id).length ? `<button class="btn btn-primary btn-sm" data-act="payall">Mark all owed as paid (${owedJobs(tasks, w.user_id).length})</button>` : ''}
+        ${tasksLoaded && owedJobs(tasks, w.user_id).length ? `<button class="btn btn-ghost btn-sm" data-act="payall">Mark all owed as paid (${owedJobs(tasks, w.user_id).length})</button>` : ''}
         <button class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
         ${w.active ? '<button class="btn btn-ghost btn-sm" data-act="resend">Send new code</button>' : ''}
         ${w.active ? '<button class="btn btn-ghost btn-sm" data-act="reset">Reset access</button>' : ''}
@@ -108,6 +119,93 @@ function render() {
           : '<button class="btn btn-primary btn-sm" data-act="reactivate">Reactivate</button>'}
       </div>
     </div>`).join('')}</div>`;
+}
+
+// ---- Worker detail page: everything about ONE worker (admin only). No feedback is ever shown here.
+function showView() {
+  const detail = !!detailId;
+  const set = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+  set('wkIntro', !detail); set('wkList', !detail); set('wkJobsWrap', !detail); set('wkDetail', detail);
+  if (detail) set('wkEmpty', false);
+}
+
+function openDetail(id) {
+  detailId = id; dFilters = { status: '', pay: '', when: '' };
+  setNotice('');
+  renderDetail();
+  window.scrollTo(0, 0);
+}
+
+function closeDetail() { detailId = null; showView(); render(); }
+
+function renderDetail() {
+  const box = document.getElementById('wkDetail');
+  if (!box) return;
+  const w = workers.find((x) => x.user_id === detailId);
+  if (!w) { detailId = null; showView(); render(); return; }
+  showView();
+  const today = localToday();
+  const mine = tasks.filter((t) => t.worker_id === w.user_id);
+  const s = summarize(mine, today);
+  const e = summarizeEarnings(mine);
+  const opt = (v, label, cur) => `<option value="${escHtml(v)}"${cur === v ? ' selected' : ''}>${escHtml(label)}</option>`;
+  const rows = filterJobs(mine, { worker: '', status: dFilters.status, when: dFilters.when, pay: dFilters.pay }, today);
+  const owed = owedJobs(mine, w.user_id);
+  const paidList = mine.filter((t) => isPaid(t)).sort((a, b) => String(b.paid_on || '').localeCompare(String(a.paid_on || '')));
+  const months = monthlyEarnings(mine);
+
+  box.innerHTML = `
+    <button type="button" class="btn btn-ghost btn-sm" data-back>← All workers</button>
+    <div class="card wk-card wk-detail-head${w.active ? '' : ' is-off'}">
+      <div class="wk-name">${escHtml(w.name || 'Unnamed')}
+        ${workerRoles(w).map((k) => `<span class="badge badge-purple">${escHtml(ROLE_LABEL[k] || k)}</span>`).join(' ') || '<span class="badge badge-purple">No role</span>'}
+        <span class="badge ${w.active ? 'badge-green' : 'badge-red'}">${w.active ? 'Active' : 'Deactivated'}</span>
+      </div>
+      <div class="wk-email">${escHtml(w.email || '')}</div>
+      <div class="wk-login">${escHtml(loginLine(w))}</div>
+      <div class="wk-actions">
+        <button class="btn btn-ghost btn-sm" data-dact="edit">Edit</button>
+        ${w.active ? '<button class="btn btn-ghost btn-sm" data-dact="resend">Send new code</button>' : ''}
+        ${w.active ? '<button class="btn btn-ghost btn-sm" data-dact="reset">Reset access</button>' : ''}
+        ${w.active
+    ? '<button class="btn btn-danger btn-sm" data-dact="deactivate">Deactivate</button>'
+    : '<button class="btn btn-primary btn-sm" data-dact="reactivate">Reactivate</button>'}
+      </div>
+    </div>
+
+    <h2 class="wk-h2">Jobs</h2>
+    ${!tasksLoaded ? '<p class="wk-muted">Loading jobs…</p>' : `
+    <div class="wk-sum">
+      <span class="wk-pill">All <b>${mine.length}</b></span>
+      <span class="wk-pill">To do <b>${s.todo}</b></span>
+      <span class="wk-pill wk-pill-blue">In progress <b>${s.in_progress}</b></span>
+      <span class="wk-pill wk-pill-green">Done <b>${s.done}</b></span>
+      ${s.overdue ? `<span class="wk-pill wk-pill-red">${s.overdue} overdue</span>` : ''}
+    </div>
+
+    <h2 class="wk-h2">Earnings</h2>
+    ${earningsHtml(mine)}
+    ${owed.length ? `<p><button type="button" class="btn btn-primary btn-sm" data-dact="payall">Mark all owed as paid (${owed.length})</button></p>` : ''}
+    ${months.length ? `<div class="wk-months">${months.map((m) => `
+      <div class="wk-month"><span>${escHtml(m.label)} · ${m.count} job${m.count === 1 ? '' : 's'}</span>
+        <span>Earned <b>${escHtml(money(m.earned))}</b> · Paid ${escHtml(money(m.paid))}${m.owed ? ` · <b>Owed ${escHtml(money(m.owed))}</b>` : ''}</span></div>`).join('')}</div>` : ''}
+
+    <h2 class="wk-h2">Pay history</h2>
+    ${paidList.length ? `<div class="wk-paidlist">${paidList.map((t) => `
+      <div class="wk-paidrow"><span>${escHtml(fmtFull(t.paid_on) || 'Paid')}</span><span>${escHtml(t.title)}</span><b>${escHtml(money(t.pay_amount))}</b></div>`).join('')}
+      <div class="wk-paidrow wk-paidtotal"><span></span><span>Total paid</span><b>${escHtml(money(e.paid))}</b></div></div>`
+    : '<p class="wk-muted">Nothing has been paid to this worker yet.</p>'}
+
+    <h2 class="wk-h2">Every job</h2>
+    <div class="wk-filters">
+      <select data-dfilter="status" aria-label="Status">${opt('', 'Any status', dFilters.status)}${opt('todo', 'To do', dFilters.status)}${opt('in_progress', 'In progress', dFilters.status)}${opt('done', 'Done', dFilters.status)}</select>
+      <select data-dfilter="when" aria-label="When">${opt('', 'Any time', dFilters.when)}${opt('overdue', 'Overdue', dFilters.when)}${opt('upcoming', 'Upcoming', dFilters.when)}</select>
+      <select data-dfilter="pay" aria-label="Payment">${opt('', 'Any payment', dFilters.pay)}${opt('owed', 'Still owed', dFilters.pay)}${opt('paid', 'Paid', dFilters.pay)}</select>
+      ${dFilters.status || dFilters.when || dFilters.pay ? '<button type="button" class="btn btn-ghost btn-sm" data-dfilter-clear>Clear</button>' : ''}
+    </div>
+    ${!mine.length ? '<p class="wk-muted">No jobs have been assigned to this worker yet.</p>'
+    : !rows.length ? '<p class="wk-muted">No jobs match these filters.</p>'
+      : `<div class="wk-jobs">${rows.map((t) => jobRow(t, today)).join('')}</div>`}`}`;
 }
 
 async function load() {
@@ -409,6 +507,7 @@ function openEdit(w) {
 async function onAction(act, w) {
   setNotice('');
   if (act === 'edit') return openEdit(w);
+  if (act === 'open') { openDetail(w.user_id); return undefined; }
 
   if (act === 'jobs') {
     filters = { ...NO_FILTERS, worker: w.user_id };
@@ -463,6 +562,20 @@ async function onAction(act, w) {
   return undefined;
 }
 
+// "Mark paid" / "Undo paid" buttons on a job card (both the all-jobs list and a worker's page)
+function onPayClick(e) {
+  const one = e.target.closest('[data-pay-one]');
+  if (one) {
+    const t = tasks.find((x) => x.id === one.dataset.payOne);
+    if (t && canMarkPaid(t)) openPayModal([t], `Mark this job as paid to ${workerName(t.worker_id)}:`);
+  }
+  const undo = e.target.closest('[data-pay-undo]');
+  if (undo) {
+    const t = tasks.find((x) => x.id === undo.dataset.payUndo);
+    if (t && isPaid(t)) undoPaid(t);
+  }
+}
+
 export function onAddClick() { openAdd(); }
 
 export function init() {
@@ -472,6 +585,7 @@ export function init() {
     list.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-act]');
       if (!btn) return;
+      e.preventDefault();
       const card = btn.closest('[data-id]');
       const w = workers.find((x) => x.user_id === card.dataset.id);
       if (w) onAction(btn.dataset.act, w);
@@ -489,16 +603,25 @@ export function init() {
     wrap.addEventListener('click', (e) => {
       if (e.target.closest('[data-filter-clear]')) { filters = { ...NO_FILTERS }; renderJobs(); }
       if (e.target.closest('#wkJobsRefresh')) { setNotice(''); loadTasks(); }
-      const one = e.target.closest('[data-pay-one]');
-      if (one) {
-        const t = tasks.find((x) => x.id === one.dataset.payOne);
-        if (t && canMarkPaid(t)) openPayModal([t], `Mark this job as paid to ${workerName(t.worker_id)}:`);
-      }
-      const undo = e.target.closest('[data-pay-undo]');
-      if (undo) {
-        const t = tasks.find((x) => x.id === undo.dataset.payUndo);
-        if (t && isPaid(t)) undoPaid(t);
-      }
+      onPayClick(e);
+    });
+  }
+  const detail = document.getElementById('wkDetail');
+  if (detail && !detail.dataset.wired) {
+    detail.dataset.wired = '1';
+    detailId = null;                                  // a fresh page always starts on the list
+    detail.addEventListener('click', (e) => {
+      if (e.target.closest('[data-back]')) { closeDetail(); return; }
+      if (e.target.closest('[data-dfilter-clear]')) { dFilters = { status: '', pay: '', when: '' }; renderDetail(); return; }
+      const act = e.target.closest('[data-dact]');
+      if (act) { const w = workers.find((x) => x.user_id === detailId); if (w) onAction(act.dataset.dact, w); return; }
+      onPayClick(e);
+    });
+    detail.addEventListener('change', (e) => {
+      const sel = e.target.closest('[data-dfilter]');
+      if (!sel) return;
+      dFilters = { ...dFilters, [sel.dataset.dfilter]: sel.value };
+      renderDetail();
     });
   }
   // Coming back to the app should show what workers did meanwhile.
