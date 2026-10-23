@@ -1,6 +1,7 @@
 // pages/clientAnalysis.js — project & payment analytics computed from
 // Income entries. All local, no AI call needed.
 
+import { received } from '../money.js';
 import { getIncome, getClients } from '../storage.js';
 import { escHtml, formatDate, currency, daysBetween } from '../format.js';
 
@@ -59,10 +60,10 @@ export function init() {
   const lastKey = monthKey(lastMonthDate.toISOString().slice(0, 10));
 
   const paidByMonth = {};
-  all.filter((e) => e.status === 'Paid').forEach((e) => {
+  all.forEach((e) => {
     const k = monthKey(e.date);
     if (!k) return;
-    paidByMonth[k] = (paidByMonth[k] || 0) + Number(e.amount || 0);
+    paidByMonth[k] = (paidByMonth[k] || 0) + received(e);
   });
   const curAmt = paidByMonth[curKey] || 0;
   const lastAmt = paidByMonth[lastKey] || 0;
@@ -132,7 +133,7 @@ export function init() {
 
   /* ---------- Year to date ---------- */
   const ytdEntries = all.filter((e) => e.date && new Date(e.date).getFullYear() === thisYear);
-  const ytdEarned = ytdEntries.filter((e) => e.status === 'Paid').reduce((s, e) => s + Number(e.amount || 0), 0);
+  const ytdEarned = ytdEntries.reduce((s, e) => s + received(e), 0);
   const ytdProjects = ytdEntries.length;
   const firstProjectYear = {};
   all.forEach((e) => {
@@ -162,8 +163,8 @@ export function init() {
 
   /* ---------- Referrals ---------- */
   const referred = all.filter((e) => e.referral);
-  const referralRevenue = referred.filter((e) => e.status === 'Paid').reduce((s, e) => s + Number(e.amount || 0), 0);
-  const totalPaidRevenue = all.filter((e) => e.status === 'Paid').reduce((s, e) => s + Number(e.amount || 0), 0);
+  const referralRevenue = referred.reduce((s, e) => s + received(e), 0);
+  const totalPaidRevenue = all.reduce((s, e) => s + received(e), 0);
   const referralPct = all.length ? Math.round((referred.length / all.length) * 100) : 0;
   const referralRevPct = totalPaidRevenue ? Math.round((referralRevenue / totalPaidRevenue) * 100) : 0;
   document.getElementById('caReferrals').innerHTML = all.length

@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 5 · Weekly invoice + Content Types cleanup · build 13 (22 Oct 2026)
+**Current version:** Phase 6 · Money tracking · build 14 (23 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -25,7 +25,10 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
 
-## Phase 5 (build 13) — built, waiting for owner's "it works"
+## Phase 6 (build 14) — built, waiting for owner's "it works"
+Money page + partial-payment history. Files: `js/money.js`, `js/paymentsUi.js`, `js/pages/money.js`, `pages/money.html`, `css/money.css`; edits in `income.js`, `projectLibrary.js`, `invoice.js`, `clientAnalysis.js`, `clientDirectory.js`, `storage.js`, `cloud.js`, `router.js`, `index.html`. Tests: `t18_money.mjs`. No SQL. Next: Phase 7 Package builder.
+
+## Phase 5 (build 13) — done
 Weekly package invoice (owner's new request) in `js/pages/invoice.js` + `pricing.js` (`weeklyPackages`, `business.weekly*`). Content Types page removed; list edited in Settings (`settings.js` `renderContentTypes`). No SQL. Tests: `t17_weekly_ctypes.mjs`. Next: Phase 6 Money tracking.
 
 ## Phase 4 (build 12) — done

@@ -1,6 +1,7 @@
 // pages/clientDirectory.js — every client in one place, whichever door they
 // came in through (Outreach "Closed" or added manually on the Dashboard).
 
+import { received, balance } from '../money.js';
 import { getClients, getIncome } from '../storage.js';
 import { escHtml, formatDate, currency } from '../format.js';
 
@@ -14,7 +15,7 @@ function projectsForClient(client) {
 }
 
 function revenueFor(projects) {
-  return projects.filter((p) => p.status === 'Paid').reduce((s, p) => s + Number(p.amount || 0), 0);
+  return projects.reduce((s, p) => s + received(p), 0);
 }
 
 function filteredSortedClients() {
@@ -78,7 +79,7 @@ function openProfile(id) {
   if (!client) return;
   const projects = projectsForClient(client).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const revenue = revenueFor(projects);
-  const pending = projects.filter((p) => p.status !== 'Paid').reduce((s, p) => s + Number(p.amount || 0), 0);
+  const pending = projects.reduce((s, p) => s + balance(p), 0);
 
   document.getElementById('cdListView').style.display = 'none';
   const view = document.getElementById('cdProfileView');

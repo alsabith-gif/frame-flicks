@@ -26,6 +26,7 @@ const KEYS = {
   meetings: 've_ct_meetings',
   pricing: 've_ct_pricing',
   invoices: 've_ct_invoices',
+  expenses: 've_ct_expenses',
   notifPrefs: 've_ct_notif_prefs',
 };
 
@@ -175,6 +176,14 @@ export function getPricing() {
 }
 export function savePricing(obj) {
   return fbSave(KEYS.pricing, obj);
+}
+
+/* ---------------- Your own expenses (admin only) ---------------- */
+export function getExpenses() {
+  return fbLoad(KEYS.expenses, []);
+}
+export function saveExpenses(list) {
+  return fbSave(KEYS.expenses, list);
 }
 
 /* ---------------- Saved invoices ---------------- */

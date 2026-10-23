@@ -3,6 +3,8 @@
 // visible label changed to "Dashboard" — so nothing else has to be renamed.)
 
 import { getIncome, saveIncome, getContentTypes, getPricing, uid } from '../storage.js';
+import { received, balance, hasPayments, statusFor } from '../money.js';
+import { upgradeOldPartials } from '../paymentsUi.js';
 import { showToast } from '../toast.js';
 import { openModal, closeModal, openConfirm } from '../modal.js';
 import {
@@ -52,14 +54,24 @@ function filtered() {
   return rows;
 }
 
+// Projects with a payments list get their status from the payments (read-only here);
+// older projects keep the simple dropdown.
+function statusCellHtml(e, statusCls, statusOptions) {
+  if (hasPayments(e)) {
+    const got = received(e);
+    return `<span class="badge ${statusCls[e.status] || 'badge-muted'}" title="Record payments on the project page">${e.status}${e.status === 'Partial' ? ` · ${currency(got)} of ${currency(e.amount)}` : ''}</span>`;
+  }
+  return `<select class="inline-select proj-status-select badge ${statusCls[e.status] || 'badge-muted'}" data-id="${e.id}">${statusOptions.map((s) => `<option value="${s}" ${e.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+}
+
 function isOverdue(e) {
   return !!e.dueDate && (e.status === 'Pending' || e.status === 'Partial') && daysBetween(e.dueDate) < 0;
 }
 
 function renderKpis() {
   const all = getIncome();
-  const paid = all.filter((e) => e.status === 'Paid').reduce((s, e) => s + Number(e.amount || 0), 0);
-  const pending = all.filter((e) => e.status === 'Pending' || e.status === 'Partial').reduce((s, e) => s + Number(e.amount || 0), 0);
+  const paid = all.reduce((s, e) => s + received(e), 0);
+  const pending = all.reduce((s, e) => s + balance(e), 0);
   const active = all.filter((e) => (e.stage || 'Received') !== 'Delivered').length;
   const overdue = all.filter(isOverdue).length;
 
@@ -190,9 +202,7 @@ function renderTable() {
         <td>${dueBadgeSpanHtml(e)}</td>
         <td>${currency(e.amount)}</td>
         <td>
-          <select class="inline-select proj-status-select badge ${statusCls[e.status] || 'badge-muted'}" data-id="${e.id}">
-            ${statusOptions.map((s) => `<option value="${s}" ${e.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-          </select>
+          ${statusCellHtml(e, statusCls, statusOptions)}
         </td>
         <td>${revisionsBadgeHtml(e)}</td>
         <td>${rowActionsHtml(e)}</td>
@@ -206,9 +216,7 @@ function renderTable() {
       <div class="mcard">
         <div class="mcard-top">
           <div class="mcard-name">${escHtml(e.client)} — ${escHtml(e.project)} ${priorityBadgeHtml(e)}${e.contentType ? `<div class="cell-sub">${escHtml(e.contentType)}</div>` : ''}</div>
-          <select class="inline-select proj-status-select badge ${statusCls[e.status] || 'badge-muted'}" data-id="${e.id}">
-            ${statusOptions.map((s) => `<option value="${s}" ${e.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-          </select>
+          ${statusCellHtml(e, statusCls, statusOptions)}
         </div>
         <div class="mcard-row"><span>Stage</span>
           <select class="inline-select stage-select badge ${STAGE_CLASS[stage] || 'badge-muted'}" data-id="${e.id}">
@@ -539,7 +547,7 @@ export function openIncomeModal(id) {
       <div class="form-field"><label>Completed Date</label><input type="date" id="iCompleted" value="${existing?.completedDate || ''}"></div>
       <div class="form-field"><label>Amount (₹)</label><input type="number" id="iAmount" value="${existing?.amount || ''}"></div>
       <div class="form-field"><label>Status</label>
-        <select id="iStatus">
+        <select id="iStatus" ${existing && hasPayments(existing) ? 'disabled title="Worked out from the payments on the project page"' : ''}>
           <option value="Paid" ${existing?.status === 'Paid' ? 'selected' : ''}>Paid</option>
           <option value="Pending" ${existing?.status === 'Pending' ? 'selected' : ''}>Pending</option>
           <option value="Partial" ${existing?.status === 'Partial' ? 'selected' : ''}>Partial</option>
@@ -676,7 +684,7 @@ export function openIncomeModal(id) {
       dueDate: body.querySelector('#iDue').value,
       completedDate: body.querySelector('#iCompleted').value,
       amount: Number(body.querySelector('#iAmount').value) || 0,
-      status: body.querySelector('#iStatus').value,
+      status: existing && hasPayments(existing) ? existing.status : body.querySelector('#iStatus').value,
       revisions: Number(body.querySelector('#iRevisions').value) || 0,
       revisionLimit: Number(body.querySelector('#iRevisionLimit').value) || 0,
       referral: body.querySelector('#iReferral').value === 'yes',
@@ -706,6 +714,7 @@ export function openIncomeModal(id) {
     if (target) {
       const idx = current.findIndex((x) => x.id === target.id);
       saved = { ...current[idx], ...data };
+      if (hasPayments(saved)) saved.status = statusFor(saved);   // amount may have changed
       current[idx] = saved;
       saveIncome(current);
       toastMsg = 'Entry updated';
@@ -760,6 +769,7 @@ export async function syncTrackerStatus(entry) {
 }
 
 export function init() {
+  upgradeOldPartials();
   document.getElementById('incMonthFilter').addEventListener('change', (e) => { state.month = e.target.value; renderTable(); });
   document.getElementById('incStatusFilter').addEventListener('change', (e) => { state.status = e.target.value; renderTable(); });
   document.getElementById('incPriorityFilter').addEventListener('change', (e) => { state.priority = e.target.value; renderTable(); });

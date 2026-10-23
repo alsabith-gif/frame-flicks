@@ -25,6 +25,7 @@ const SYNCED_KEYS = [
   've_ct_meetings',
   've_ct_pricing',
   've_ct_invoices',
+  've_ct_expenses',
   've_ct_notif_prefs',
 ];
 

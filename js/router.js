@@ -6,6 +6,7 @@ const PAGE_META = {
   goals: { title: 'Daily Goals', addLabel: null },
   analysis: { title: 'Analysis', addLabel: null },
   income: { title: 'Dashboard', addLabel: '+ Add Project' },
+  money: { title: 'Money', addLabel: null },
   clientAnalysis: { title: 'Client Analysis', addLabel: null },
   clientDirectory: { title: 'Client Directory', addLabel: null },
   workers: { title: 'Workers', addLabel: '+ Add Worker' },

@@ -1,0 +1,21 @@
+<section class="money-page">
+  <p class="mn-intro">Money in (payments you recorded), your own expenses, and what is left. Crew pay is not counted here.</p>
+  <div class="mn-toolbar"><label for="mnMonth">Show</label><select id="mnMonth"></select></div>
+  <div class="mn-kpis" id="mnKpis"></div>
+
+  <div class="card mn-sec">
+    <h2 class="pd-h2">Add an expense</h2>
+    <div class="form-grid">
+      <div class="form-field"><label>Amount (₹)</label><input type="number" id="exAmt" min="1"></div>
+      <div class="form-field"><label>Date</label><input type="date" id="exDate"></div>
+      <div class="form-field"><label>Kind</label><select id="exCat"></select></div>
+      <div class="form-field"><label>Note (optional)</label><input type="text" id="exNote" maxlength="120"></div>
+    </div>
+    <p class="muted" id="exMsg" style="color:#c0392b;min-height:1em"></p>
+    <div class="form-actions"><button class="btn btn-primary btn-sm" id="exAdd">＋ Add expense</button></div>
+  </div>
+
+  <div class="card mn-sec"><h2 class="pd-h2">Expenses</h2><div id="mnExpenses"></div></div>
+  <div class="card mn-sec"><h2 class="pd-h2">Money received</h2><div id="mnPayments"></div></div>
+  <div class="card mn-sec"><h2 class="pd-h2">Still to receive</h2><div id="mnOwed"></div></div>
+</section>

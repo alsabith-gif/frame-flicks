@@ -960,3 +960,31 @@ The **Content Types** menu item is gone. The choices still appear in the project
 
 ### What changed (build 13)
 `js/pages/invoice.js`, `pages/invoice.html`, `css/invoice.css`, `js/pricing.js`, `js/pages/settings.js`, `pages/settings.html`, `js/router.js`, `index.html`, `js/version.js`, docs. Removed: the 3 Content Types files.
+
+
+## Phase 6 — Money: part payments and your own expenses (build 14)
+
+**No SQL and no function changes. You only upload files.**
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`build14_changed_files_only.zip`** (it includes 5 new files), replace the old ones, then press **Ctrl+Shift+R**. Settings → About should say **Phase 6 · Money tracking · build 14**.
+
+### 2. Try it
+1. **Record part payments:** open **Projects** → click a project → in **Payments** press **＋ Record a payment**. Type the amount, date and an optional note. The page shows *Received so far*, *Balance* and every payment. Status turns **Partial**, then **Paid** by itself when the balance reaches 0. The 🗑️ next to a payment removes it.
+2. **Money page (new menu item 💰 Money):** pick a month (or All time). You see **Received**, **Your expenses**, **Left**, and **Still to receive**.
+3. **Add an expense:** amount, date, kind, optional note → Add expense. 🗑️ deletes one.
+4. **Still to receive** lists projects with a balance; **Record payment** works from there too.
+5. Dashboard totals now count part payments. Once a project has payments, its status is worked out from them (the dropdown becomes a label). Older projects without payments work as before. An old "Partial" project gets its invoice advance as the first payment automatically.
+6. Crew pay is **not** counted on this page.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| No "Money" in the menu | Upload `index.html` and `js/router.js` again, Ctrl+Shift+R. |
+| Money page is blank / "Could not load" | Upload the 5 new files: `js/money.js`, `js/paymentsUi.js`, `js/pages/money.js`, `pages/money.html`, `css/money.css`. |
+| No "Record a payment" on the project page | Upload `js/pages/projectLibrary.js` and `js/paymentsUi.js`. |
+| "More than the balance" message | The payment is bigger than what is left. Edit the project amount first if the price went up. |
+| Expenses missing on another device | Wait a few seconds / reload; they sync like your other data. |
+
+### What changed (build 14)
+New: `js/money.js`, `js/paymentsUi.js`, `js/pages/money.js`, `pages/money.html`, `css/money.css`. Changed: `js/pages/income.js`, `js/pages/projectLibrary.js`, `js/pages/invoice.js`, `js/pages/clientAnalysis.js`, `js/pages/clientDirectory.js`, `js/storage.js`, `js/cloud.js`, `js/router.js`, `index.html`, `js/version.js`, docs.

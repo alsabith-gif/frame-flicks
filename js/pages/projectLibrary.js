@@ -13,6 +13,7 @@ import { splitPrice } from '../pricing.js';
 import { loadWorkers, loadCrewForProject } from '../crew.js';
 import { trackLinkFor, openLinkShareModal } from '../tracklink.js';
 import { ROLE_LABEL, roleMainDate } from '../roles.js';
+import { paymentsBlockHtml, wirePayments, upgradeOldPartials } from '../paymentsUi.js';
 
 let detailId = null;      // the project whose page is open (null = the grid)
 
@@ -138,18 +139,7 @@ function openDetail(id) { detailId = id; renderDetail(); window.scrollTo(0, 0); 
 function closeDetail() { detailId = null; render(); }
 
 function paymentsHtml(p) {
-  const inv = getInvoices().find((x) => x.id === p.invoiceId || x.projectId === p.id);
-  const amount = Number(p.amount || 0);
-  const status = p.status || 'Pending';
-  const advance = inv ? Number(inv.advance || 0) : 0;
-  const cls = status === 'Paid' ? 'badge-green' : status === 'Partial' ? 'badge-amber' : 'badge-muted';
-  let html = row('Project amount', escHtml(currency(amount)));
-  html += row('Payment status', `<span class="badge ${cls}">${escHtml(status)}</span>`);
-  if (inv && advance > 0) {
-    html += row('Advance recorded on the invoice', escHtml(currency(advance)));
-    html += row('Balance', escHtml(currency(Math.max(0, amount - advance))));
-  }
-  return html;
+  return `<div data-pid="${escHtml(p.id)}">${paymentsBlockHtml(p)}</div>`;
 }
 
 function invoicesHtml(p) {
@@ -254,6 +244,7 @@ function renderDetail() {
         ${p.clientNote ? `<h3 class="pd-h3">Note shown to the client</h3><div class="pd-note">${escHtml(p.clientNote)}</div>` : ''}`)}
     </div>`;
   fillCrew(p.id);
+  wirePayments(box, () => { renderDetail(); });
 }
 
 async function onDetailClick(e) {
@@ -279,6 +270,7 @@ async function onDetailClick(e) {
 }
 
 export function init() {
+  upgradeOldPartials();
   document.getElementById('plSearch').addEventListener('input', (e) => { state.search = e.target.value; render(); });
   document.getElementById('plClientFilter').addEventListener('change', (e) => { state.client = e.target.value; render(); });
   document.getElementById('plStatusFilter').addEventListener('change', (e) => { state.status = e.target.value; render(); });

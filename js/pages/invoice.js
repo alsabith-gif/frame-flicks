@@ -3,6 +3,7 @@
 // editable. Printing happens in a clean iframe so the colours and layout
 // come out exactly as shown (A4, full colour).
 
+import { applyInvoiceAdvance } from '../money.js';
 import { getPricing, savePricing, getInvoices, saveInvoices, getIncome, saveIncome, uid } from '../storage.js';
 import { findOrCreateClient } from '../clients.js';
 import { calcInvoice, addOnCatalog, SIZE_LABELS, DELIVERY_LABELS } from '../pricing.js';
@@ -194,6 +195,7 @@ function syncProjectFromInvoice() {
   }
   const seenByCrew = { project: proj.project, client: proj.client, shootDate: proj.shootDate };
   Object.assign(proj, fields);
+  applyInvoiceAdvance(proj, advance, S.date);   // the invoice's advance becomes a payment; later payments are kept
   saveIncome(list);
   S.projectId = proj.id;
   // If this project has crew, their copy of the name / client / shoot date must follow.

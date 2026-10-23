@@ -1,0 +1,15 @@
+.money-page { max-width: 760px; }
+.mn-intro { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.mn-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 13px; }
+.mn-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+@media (min-width: 640px) { .mn-kpis { grid-template-columns: repeat(4, 1fr); } }
+.mn-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.mn-kpi span { display: block; font-size: 12px; color: var(--muted); }
+.mn-kpi b { font-size: 19px; font-weight: 600; }
+.mn-kpi.neg b { color: #c0392b; }
+.mn-sec { margin-bottom: 12px; }
+.mn-row, .pay-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.mn-row:last-child, .pay-row:last-child { border-bottom: none; }
+.mn-row .mn-main, .pay-row > span { flex: 1; min-width: 0; word-break: break-word; }
+.mn-row small { display: block; color: var(--muted); font-size: 12px; }
+.pay-list { margin-top: 6px; }
