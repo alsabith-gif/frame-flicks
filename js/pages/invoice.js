@@ -153,7 +153,7 @@ function invoiceTotals() {
   return { grand: r.grand, advance: r.advance };
 }
 
-// Every saved invoice is also a project on the Dashboard / Project Library.
+// Every saved invoice is also a project on the Dashboard / Projects page.
 // First save creates the project and remembers its id on the invoice
 // (projectId) and the invoice id on the project (invoiceId). Saving the same
 // invoice again updates that project's invoice-driven fields only — stage,

@@ -14,7 +14,7 @@ const PAGE_META = {
   calendar: { title: 'Calendar', addLabel: null },
   invoice: { title: 'Invoice Maker', addLabel: null },
   priceSplit: { title: 'Price Distributor', addLabel: null },
-  projectLibrary: { title: 'Project Library', addLabel: null },
+  projectLibrary: { title: 'Projects', addLabel: null },       // (internal name stays projectLibrary so old links keep working)
   scripts: { title: 'DM Scripts', addLabel: '+ Add Script' },
   followup: { title: 'Smart Follow-ups', addLabel: null },
   tips: { title: 'Tips', addLabel: null },

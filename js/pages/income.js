@@ -239,50 +239,7 @@ function renderTable() {
       });
     });
     root.querySelectorAll('[data-action="edit"]').forEach((b) => b.addEventListener('click', () => openIncomeModal(b.dataset.id)));
-    root.querySelectorAll('[data-action="delete"]').forEach((b) => b.addEventListener('click', () => {
-      // Removes the project for real (after any warnings below).
-      const finishDelete = async (entry, id) => {
-        // Workers must not keep a job for a project that no longer exists. Remove
-        // their jobs FIRST; if that fails (e.g. offline) keep the project, so
-        // nothing is ever left behind on a worker's phone.
-        if (entry?.hasCrew) {
-          try {
-            await deleteCrewForProject(entry.id);
-          } catch (err) {
-            showToast("Not deleted — couldn't remove the crew's jobs. Check your internet and try again.");
-            return;
-          }
-        }
-        saveIncome(getIncome().filter((x) => x.id !== id));
-        if (entry?.trackCode) import('../cloud.js').then(({ deleteProjectStatus }) => deleteProjectStatus(entry.trackCode));
-        showToast('Entry deleted');
-        renderAll();
-      };
-      openConfirm('Delete this income entry? This action cannot be undone.', async () => {
-        const entry = getIncome().find((x) => x.id === b.dataset.id);
-        // Deleting a project also deletes its crew jobs — including any you have
-        // already marked PAID, which would erase that pay record. Ask first.
-        if (entry?.hasCrew) {
-          let paid;
-          try {
-            paid = await paidJobsForProject(entry.id);
-          } catch (err) {
-            showToast("Not deleted — couldn't check the crew's jobs. Check your internet and try again.");
-            return;
-          }
-          if (paid.length) {
-            openConfirm(
-              `${paid.length} crew job${paid.length === 1 ? ' on this project is' : 's on this project are'} already marked PAID. Deleting the project also deletes ${paid.length === 1 ? 'that pay record' : 'those pay records'}. Delete anyway?`,
-              () => finishDelete(entry, b.dataset.id),
-              null,
-              'Delete anyway'
-            );
-            return;
-          }
-        }
-        await finishDelete(entry, b.dataset.id);
-      });
-    }));
+    root.querySelectorAll('[data-action="delete"]').forEach((b) => b.addEventListener('click', () => confirmDeleteProject(b.dataset.id)));
     root.querySelectorAll('[data-action="link"]').forEach((b) => b.addEventListener('click', () => {
       const list = getIncome();
       const idx = list.findIndex((x) => x.id === b.dataset.id);
@@ -366,7 +323,7 @@ function startCountdownTimer() {
 }
 
 /* ---------------- Saved links modal (Drive/Dropbox/etc.) ---------------- */
-function openLinksModal(id) {
+export function openLinksModal(id) {
   const list = getIncome();
   const entry = list.find((x) => x.id === id);
   if (!entry) return;
@@ -456,7 +413,59 @@ function renderCharts() {
     : '<p class="muted">No data yet.</p>';
 }
 
+// Deletes a project (asks first; warns if paid crew jobs would be erased). Used by the Dashboard and the Projects page.
+export function confirmDeleteProject(id) {
+    // Removes the project for real (after any warnings below).
+    const finishDelete = async (entry, id) => {
+      // Workers must not keep a job for a project that no longer exists. Remove
+      // their jobs FIRST; if that fails (e.g. offline) keep the project, so
+      // nothing is ever left behind on a worker's phone.
+      if (entry?.hasCrew) {
+        try {
+          await deleteCrewForProject(entry.id);
+        } catch (err) {
+          showToast("Not deleted — couldn't remove the crew's jobs. Check your internet and try again.");
+          return;
+        }
+      }
+      saveIncome(getIncome().filter((x) => x.id !== id));
+      if (entry?.trackCode) import('../cloud.js').then(({ deleteProjectStatus }) => deleteProjectStatus(entry.trackCode));
+      showToast('Entry deleted');
+      renderAll();
+    };
+    openConfirm('Delete this income entry? This action cannot be undone.', async () => {
+      const entry = getIncome().find((x) => x.id === id);
+      // Deleting a project also deletes its crew jobs — including any you have
+      // already marked PAID, which would erase that pay record. Ask first.
+      if (entry?.hasCrew) {
+        let paid;
+        try {
+          paid = await paidJobsForProject(entry.id);
+        } catch (err) {
+          showToast("Not deleted — couldn't check the crew's jobs. Check your internet and try again.");
+          return;
+        }
+        if (paid.length) {
+          openConfirm(
+            `${paid.length} crew job${paid.length === 1 ? ' on this project is' : 's on this project are'} already marked PAID. Deleting the project also deletes ${paid.length === 1 ? 'that pay record' : 'those pay records'}. Delete anyway?`,
+            () => finishDelete(entry, id),
+            null,
+            'Delete anyway'
+          );
+          return;
+        }
+      }
+      await finishDelete(entry, id);
+    });
+}
+
+// The Projects page asks to be told whenever a project is added, edited, deleted or changed here.
+let changeListener = null;
+export function onProjectsChanged(fn) { changeListener = fn; }
+
 function renderAll() {
+  if (changeListener) changeListener();
+  if (!document.getElementById('incMonthFilter')) return;     // not on the Dashboard right now (e.g. editing from the Projects page)
   renderKpis();
   populateMonthFilter();
   populateOtherFilters();
@@ -466,7 +475,7 @@ function renderAll() {
 
 /* ---------------- Add / Edit Project modal ---------------- */
 
-function openIncomeModal(id) {
+export function openIncomeModal(id) {
   const list = getIncome();
   const existing = id ? list.find((x) => x.id === id) : null;
   if (existing && !existing.trackCode) {
@@ -735,7 +744,7 @@ function openIncomeModal(id) {
   });
 }
 
-async function syncTrackerStatus(entry) {
+export async function syncTrackerStatus(entry) {
   if (!entry.trackCode) return;
   const { pushProjectStatus } = await import('../cloud.js');
   pushProjectStatus(entry.trackCode, {

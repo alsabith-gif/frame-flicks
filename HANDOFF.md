@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 3 · worker detail page · build 11 (20 Oct 2026)
+**Current version:** Phase 4 · Projects page · build 12 (22 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -25,13 +25,17 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
 
-## Next: Phase 4 — Projects page + project detail (A4)
-Rename "Project Library" → **Projects** everywhere users see it (keep the old `projectLibrary` route working). It lists ALL projects
-(like the Library grid today). Opening a project shows a full detail page: client, dates, stage + history, amount, payments, crew
-(who, role, pay, status, location, time, notes), services/content types, revisions, saved links, client progress link, invoice(s),
-price split, notes; edit/delete from there. Reuse existing data/logic (`getIncome`, `crew.js`, `tracklink.js`, `pricing.js`); do NOT
-copy the Dashboard. Admin-only. First do the inventory of where project data lives (`js/pages/income.js`, `storage.js`).
-Then: 5 remove Content Types *page* · 6 Money tracking · 7 Package builder · 8 extend proof. (Delete worker is dropped.)
+## Phase 4 (build 12) — done
+Projects page + project detail inside `js/pages/projectLibrary.js` (state `detailId`, `#plDetail`). Renamed menu/title to "Projects".
+`income.js` now exports `confirmDeleteProject`, `openIncomeModal`, `openLinksModal`, `syncTrackerStatus`, `onProjectsChanged`. No SQL.
+(A half-built draft of this was found in the folder from an earlier session; it was reviewed, tested (t16) and a link-safety fix added.)
+
+## Next: Phase 5 — Remove the Content Types PAGE (A6)
+Remove only the page (menu item, `PAGE_META` entry, `pages/contentTypes.html`, `js/pages/contentTypes.js`, `css/contentTypes.css`), and make the old
+`contentTypes` route redirect (e.g. to the Dashboard). KEEP the content-type choices (`ve_ct_content_types`, `getContentTypes`) working in the
+Add/Edit Project form, the Dashboard filter and the Invoice Maker; never delete stored data. Since the page was the only place to edit the list,
+decide with the owner whether to add a tiny "edit content types" box (e.g. in Settings) — default: yes, a small box in admin Settings.
+Check `t3`/`t7`/`t9` and add a test that the form still offers the saved types. Then: 6 Money tracking · 7 Package builder · 8 extend proof. (Delete worker dropped.)
 
 ## Notes
-- Test rig lives only in the build session. The latest tests zip has it: SQL suites, Deno, vapid, browser t1–t15.
+- Test rig lives only in the build session. The latest tests zip has it: SQL suites, Deno, vapid, browser t1–t16.

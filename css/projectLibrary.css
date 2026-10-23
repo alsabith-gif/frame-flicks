@@ -65,3 +65,23 @@
   font-family: var(--font-display);
   font-size: 15px;
 }
+
+/* Project detail page */
+.pl-card { cursor: pointer; }
+.pl-detail { max-width: 980px; }
+.pd-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin: 12px 0; padding: 16px; }
+.pd-title { font-size: 22px; margin: 0 0 6px; }
+.pd-sub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); }
+.pd-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.pd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.pd-sec { padding: 14px 16px; }
+.pd-h2 { font-size: 14px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.pd-h3 { font-size: 13px; margin: 14px 0 6px; }
+.pd-kv { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.pd-kv span { color: var(--muted); }
+.pd-kv b { text-align: right; font-weight: 500; }
+.pd-crew { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.pd-crewrow { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.pd-link { margin: 4px 0; font-size: 13.5px; word-break: break-all; }
+.pd-linkbox { width: 100%; box-sizing: border-box; }
+.pd-note { white-space: pre-wrap; font-size: 13.5px; }

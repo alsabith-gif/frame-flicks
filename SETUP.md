@@ -905,3 +905,29 @@ There is **no Delete** button (you chose not to have one). Feedback is never sho
 
 ### What changed (build 11)
 `js/pages/workers.js`, `pages/workers.html`, `css/workers.css` (detail page); `js/worker/workerContact.js`, `css/worker.css` (warning text removed); version, notes.
+
+
+---
+
+## Phase 4 — the "Projects" page and the project detail page (build 12)
+
+**No SQL and no function changes. You only upload files.**
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`phase4_changed_files_only.zip`**, replace the old ones, then press **Ctrl+Shift+R**. Settings should say **Phase 4 · Projects page · build 12**.
+
+### 2. Try it (admin window)
+1. The menu item that said **Library** now says **Projects**. It shows all your projects (active and delivered) as before.
+2. **Click any project.** You get its full page: client, dates, stage and when each stage happened, amount and payment status (with the advance and balance from the invoice), the invoice, the crew (who, role, pay, paid or not, status, location, time, notes), the price split, saved links, the client progress link, and notes.
+3. On that page: **Edit** opens the same project form as the Dashboard; **Delete** asks first (and warns if paid crew jobs would be erased); **Manage saved links** and **Share link / QR** work as on the Dashboard.
+4. **← All projects** goes back.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| Menu still says "Library" | Files not fully uploaded — upload again, Ctrl+Shift+R. |
+| Crew says "Could not load the crew" | Check your internet and press Ctrl+Shift+R. The rest of the page still works. |
+| Nothing happens when you click a project | Upload `js/pages/projectLibrary.js` and `js/pages/income.js` again. |
+
+### What changed (build 12)
+`js/pages/projectLibrary.js`, `pages/projectLibrary.html`, `css/projectLibrary.css`, `js/pages/income.js` (delete/edit/links can now be used from the Projects page), `js/router.js`, `index.html`, `js/pages/invoice.js` (a comment), version, notes.
