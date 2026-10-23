@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 7 · Package builder · build 15 (23 Oct 2026)
+**Current version:** Phase 8 · Security proof extended · build 16 (23 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -25,7 +25,10 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
 
-## Phase 7 (build 15) — built, waiting for owner's "it works"
+## Phase 8 (build 16) — built, waiting for owner's result of running the proof
+Owner must run the new `supabase/worker-tests.sql` once (SQL Editor → Run). Expect `ALL 114 CHECKS PASSED`. No SQL changes to the database, no app behaviour change. This was the last phase of the big update; Delete worker stays dropped.
+
+## Phase 7 (build 15) — done
 Packages page + library (`packageLib` in pricing data), one-time invoice type, invoice reads library. Files: `pages/packages.html`, `js/pages/packages.js`, `css/packages.css`, `pricing.js`, `invoice.js`, `invoice.html/css`, `router.js`, `index.html`. Tests: `t19_packages.mjs`. No SQL. Next: Phase 8 — extend the security proof (feedback / money / packages / expenses are admin-only: they live in `app_data`, so add checks that workers cannot read it).
 
 ## Phase 6 (build 14) — done

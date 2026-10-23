@@ -1014,3 +1014,28 @@ Upload the files from **`build15_changed_files_only.zip`** (3 new files), replac
 
 ### What changed (build 15)
 New: `js/pages/packages.js`, `pages/packages.html`, `css/packages.css`. Changed: `js/pricing.js`, `js/pages/invoice.js`, `pages/invoice.html`, `css/invoice.css`, `js/router.js`, `index.html`, `js/version.js`, docs.
+
+
+## Phase 8 — the extended security proof (build 16) — the last phase
+
+**Nothing in the app changes (only the version label). You run one SQL file. It does not touch your real data.**
+
+### 1. Upload (optional but recommended)
+Upload `js/version.js` and `supabase/worker-tests.sql` from **`build16_changed_files_only.zip`**, then Ctrl+Shift+R. Settings → About should say **Phase 8 · Security proof extended · build 16**.
+
+### 2. Run the proof
+1. Open **Supabase → SQL Editor → New query**.
+2. Open the new `worker-tests.sql` (from the zip or GitHub), copy **everything**, paste it in the editor, press **Run**.
+3. Look at the **first row** of the result. It must say **ALL 114 CHECKS PASSED** with **PASS** next to it.
+4. The proof makes pretend people and fake rows, tries to read / change / delete your money, expenses, packages, invoices and feedback as a worker, a switched-off worker and a stranger — all must be refused — and then deletes everything it made. You can run it as many times as you like.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| First row says **N CHECK(S) FAILED** | Do **not** panic. Scroll to the rows saying **FAIL**, copy them and send them to me. Do not give out worker logins until fixed. |
+| First row says **ONLY N CHECKS RAN** | The script stopped early. Make sure you pasted the whole file; if it still happens, send me the error. |
+| "feedback table missing" in a FAIL row | PART 9 was not run. Run PART 9 of `worker-setup.sql` (SETUP.md → Phase 2), then run the proof again. |
+| Red error before any result | You pasted part of the file or it was changed. Paste the whole file again. |
+
+### What changed (build 16)
+`supabase/worker-tests.sql` (95 → 114 checks), `js/version.js`, docs. Tests: `t11_access.mjs` extended.

@@ -157,7 +157,7 @@ paid its amount is locked (undo paid → change → mark paid again).
   sign-in ban, then all sessions revoked.
 - Notifications are built by the database from job rows and never include pay/phone/price; the sender claims a
   reminder before sending and skips deactivated users.
-- Proof: `supabase/worker-tests.sql` (95 checks) + the test suites in §9.
+- Proof: `supabase/worker-tests.sql` (114 checks) + the test suites in §9.
 
 ## 7. Crew roles (Roles update)
 
@@ -189,7 +189,7 @@ requires "Add to Home Screen" first.
 
 | Suite | What it proves |
 |---|---|
-| `worker-tests.sql` (in Supabase) | 95 security checks on the owner's real database. |
+| `worker-tests.sql` (in Supabase) | 114 security checks on the owner's real database. |
 | `sql_phase4/5/6_tests.sql`, `sql_phase8_tests.sql`, `sql_phase9_tests.sql` | Worker status function, pay guard, reminders/notifications, crew roles — on a real Postgres 16 with a fake Supabase schema (`fake_supabase.sql`, `stubs.sql`, `chain.sh`). |
 | `deno/test.js`, `deno/test_admin.js` | `send-reminders` and `admin-create-worker` with fake supabase / web-push. |
 | `vapid/vapid_test.mjs` | Push keys and encryption with Node `web-push`. |
@@ -214,6 +214,7 @@ When you change behaviour: add/adjust a test, run **all** suites, and only then 
 | Phase 5 | Oct 2026 | Earnings, marking paid, pay guard trigger (PART 5). |
 | Phase 6 | Oct 2026 | Push notifications, cron sender (PART 6A/6B), edge function `send-reminders`. |
 | Final (build 7) | 14 Oct 2026 | PART 7, security proof `worker-tests.sql` (95 checks), access tests. |
+| Phase 8 (build 16) | 23 Oct 2026 | **Security proof extended** (`worker-tests.sql` now 114 checks, new section 12): money, expenses, packages and invoices all live in `app_data`, so the proof plants stand-in rows and shows a worker / deactivated worker / signed-out visitor sees, changes, deletes and plants nothing, that every `app_data` rule demands an active admin, that `anon` has no rights, and that no separate expenses/payments/packages/invoice table exists. Feedback: admin can read / mark read / delete, workers cannot edit or delete. Proof's own stand-in rows now use the `__wt_` prefix and are cleaned. `t11_access` also asserts the worker's code never touches money data. No app change except version. |
 | Phase 7 (build 15) | 23 Oct 2026 | **Package builder.** New admin **Packages** page (`pages/packages.html`, `js/pages/packages.js`, `css/packages.css`; "+ Add Package"). One library `packageLib` inside the synced pricing data (`pricing.js`: `normalizePackage`, `packageFeatures`, `packageStats`, `PACKAGE_KINDS`): each package = kind (one-time / monthly / weekly), price, items (name + count), revisions, delivery days, add-ons (name + price), extra lines, popular, active/archived. Packages are archived, never deleted (old invoices keep working). Old monthly/weekly packages are migrated into the library automatically (ids + owner edits kept; `packages` / `weeklyPackages` are now legacy, unused). Invoice Maker: new **One-time package** invoice type (`type: 'onetime'`), package chooser reads the library, package add-ons appear under Extras, "Edit packages" button became "Manage packages" (opens the Packages page). Internal screens only — packages are never sent to workers or the client tracker. No SQL. |
 | Phase 6 (build 14) | 23 Oct 2026 | **Money tracking.** New pure `js/money.js` (received / balance / status from a project's optional `payments: [{id,date,amount,note}]`; legacy projects without a list behave as before); `js/paymentsUi.js` (Payments block + Record-payment modal, `upgradeOldPartials()` turns an old Partial project's invoice advance into a first payment); new admin **Money** page (`pages/money.html`, `js/pages/money.js`, `css/money.css`): month picker, Received / Your expenses / Left / Still to receive, add/delete own expenses (`ve_ct_expenses`, synced via `app_data`, admin only), payments list, who still owes. Projects detail page shows payment history; Dashboard totals, client directory and client analysis use received/balance; once a project has payments its status is read-only (worked out from payments); invoice advance = one payment (`adv`). Crew pay is NOT counted in Money. No SQL. |
 | Phase 5 (build 13) | 22 Oct 2026 | **Weekly package invoice** (`type: 'weekly'` in `invoice.js`, same layout as monthly; `isMo()` = any package invoice, `isWk()` = weekly; own `P.weeklyPackages` + `business.weeklyTag/PayNote/Terms/Footer` in `pricing.js`; 7-day period; project named "Weekly package — …"; old invoices unchanged). **Content Types page removed** (menu, route, `pages/contentTypes.html`, `js/pages/contentTypes.js`, `css/contentTypes.css`; old route redirects to Dashboard); the list (`ve_ct_content_types`) is now edited in Settings → "Project content types". No SQL. |
@@ -224,7 +225,7 @@ When you change behaviour: add/adjust a test, run **all** suites, and only then 
 | Roles update (build 8) | 18 Oct 2026 | Multi-role workers; admin-defined roles (Settings → Crew roles, PART 8, `crew_roles`, `job_roles`); `roles.js`; `main_date` rule replaces hard-coded editor logic; `admin-create-worker` takes `job_roles`; this notes file added. |
 
 ## 11b. Roadmap (the owner's "big update" plan)
-Done (also Phase 5: weekly invoice + Content Types page removed; Phase 6: Money tracking; Phase 7: Package builder): worker status, earnings and paying, notifications, security proof, multi-role workers, Phase 1 (5 tabs), **Phase 2 (contact admin + feedback), Phase 3 (worker detail page), **Phase 4 (Projects page)**.
+Done (also Phase 5: weekly invoice + Content Types page removed; Phase 6: Money tracking; Phase 7: Package builder; Phase 8: security proof extended — **the big update is finished**): worker status, earnings and paying, notifications, security proof, multi-role workers, Phase 1 (5 tabs), **Phase 2 (contact admin + feedback), Phase 3 (worker detail page), **Phase 4 (Projects page)**.
 Next, in this order (owner confirmed):
 8 Extend the security proof.
 **Dropped by the owner: "Delete worker"** (too risky for past pay records). See `HANDOFF.md`.

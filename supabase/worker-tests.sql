@@ -14,7 +14,7 @@
 -- =====================================================================
 
 -- ---------- 0. clean up leftovers from an earlier run that was interrupted
-delete from public.app_data       where key        = '__wt_probe__';
+delete from public.app_data       where key        like '\_\_wt\_%';
 delete from public.feedback       where message like 'WT-FB%';
 do $$ begin
   if to_regclass('public.project_status') is not null then
@@ -62,6 +62,13 @@ insert into public.profiles (user_id, role, name, email, active, job_role) value
 
 -- "probe" rows: stand-ins for your private data, so we can prove a worker cannot touch them
 insert into public.app_data (key, value) values ('__wt_probe__', '{"secret":"admin only"}');
+-- Phase 8: stand-ins for money, expenses, packages and invoices. They all live in app_data,
+-- so the same lock must cover them. (Your real rows are never touched — see check 12.)
+insert into public.app_data (key, value) values
+  ('__wt_money_expenses__', '{"wt-money":"expenses 424242"}'),
+  ('__wt_money_income__',   '{"wt-money":"payments 515151"}'),
+  ('__wt_money_pricing__',  '{"wt-money":"packageLib 636363"}'),
+  ('__wt_money_invoices__', '{"wt-money":"invoices 747474"}');
 do $$ begin
   if to_regclass('public.project_status') is not null then
     insert into public.project_status (track_code) values ('__wt_probe__');
@@ -562,9 +569,84 @@ exception when others then
   perform pg_temp.rec('nothing was changed behind the scenes', 'THIS PART STOPPED WITH AN ERROR', false, sqlerrm);
 end $$;
 
+
+-- ---------- 3b. Phase 8: money, expenses, packages, invoices, feedback — admin only
+do $$
+declare
+  ADM constant text := 'aaaaaaaa-7e57-4000-8000-000000000001';
+  WA  constant text := 'bbbbbbbb-7e57-4000-8000-000000000001';
+  WO  constant text := 'bbbbbbbb-7e57-4000-8000-000000000003';
+  n int; n2 int; ok boolean; pol record; bad int := 0; hid uuid;
+  real_keys constant text[] := array['ve_ct_income','ve_ct_expenses','ve_ct_pricing','ve_ct_invoices','ve_ct_clients'];
+begin
+  -- who can see what
+  perform pg_temp.as_user(ADM, 'authenticated');
+  select count(*) into n from public.app_data where key like '\_\_wt\_money\_%';
+  perform pg_temp.rec('12 money', 'ADMIN can read the 4 money / expenses / packages / invoices stand-ins', n = 4, n::text);
+  update public.app_data set value = value where key = '__wt_money_expenses__'; get diagnostics n = row_count;
+  perform pg_temp.rec('12 money', 'ADMIN can change them', n = 1, n::text);
+
+  perform pg_temp.as_user(WA, 'authenticated');
+  select count(*) into n from public.app_data where key like '\_\_wt\_money\_%';
+  perform pg_temp.rec('12 money', 'worker sees ZERO money / expenses / packages / invoices rows', n = 0, n::text);
+  select count(*) into n from public.app_data where key = any (real_keys);
+  perform pg_temp.rec('12 money', 'worker sees ZERO rows under your real data names (income, expenses, pricing, invoices, clients)', n = 0, n::text);
+  select count(*) into n from public.app_data where value::text like '%wt-money%' or value::text ~ '424242|515151|636363|747474';
+  perform pg_temp.rec('12 money', 'worker cannot find the amounts by searching the contents', n = 0, n::text);
+  update public.app_data set value = '{"hacked":1}' where key like '\_\_wt\_money\_%' or key = any (real_keys); get diagnostics n = row_count;
+  perform pg_temp.rec('12 money', 'worker cannot change any of them (0 rows touched)', n = 0, n::text);
+  delete from public.app_data where key like '\_\_wt\_money\_%' or key = any (real_keys); get diagnostics n = row_count;
+  perform pg_temp.rec('12 money', 'worker cannot delete any of them (0 rows touched)', n = 0, n::text);
+  begin insert into public.app_data (key, value) values ('ve_ct_expenses', '{"wt":"fake expense"}'); ok := false; exception when others then ok := true; end;
+  perform pg_temp.rec('12 money', 'worker cannot plant fake expenses / payments in your data', ok);
+  reset role; delete from public.app_data where key = 've_ct_expenses' and value = '{"wt":"fake expense"}'::jsonb;
+
+  perform pg_temp.as_user(WO, 'authenticated');
+  select count(*) into n from public.app_data where key like '\_\_wt\_money\_%' or key = any (real_keys);
+  perform pg_temp.rec('12 money', 'deactivated worker sees ZERO money rows', n = 0, n::text);
+
+  perform pg_temp.as_user(null, 'anon');
+  begin select count(*) into n from public.app_data where key like '\_\_wt\_money\_%'; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('12 money', 'signed-out visitor sees ZERO money rows', ok);
+
+  -- the lock itself, read straight from the database
+  reset role;
+  select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'app_data';
+  select count(*) into n2 from pg_policies where schemaname = 'public' and tablename = 'app_data' and roles::text not like '%authenticated%';
+  for pol in select policyname, qual, with_check from pg_policies where schemaname = 'public' and tablename = 'app_data' loop
+    if coalesce(pol.qual, '') not like '%is_admin%' or (pol.with_check is not null and pol.with_check not like '%is_admin%') then bad := bad + 1; end if;
+  end loop;
+  perform pg_temp.rec('12 money', 'every rule on app_data demands an active admin (nothing else lets anyone in)', n >= 1 and bad = 0 and n2 = 0, format('%s rules, %s weak', n, bad));
+  perform pg_temp.rec('12 money', 'app_data is locked with row-level security', (select relrowsecurity from pg_class where oid = 'public.app_data'::regclass));
+  perform pg_temp.rec('12 money', 'signed-out role has no access rights to app_data at all', not has_table_privilege('anon', 'public.app_data', 'select') and not has_table_privilege('anon', 'public.app_data', 'insert'));
+  perform pg_temp.rec('12 money', 'no money / expense / package table exists outside app_data (so there is nothing else to leak)',
+    (select count(*) from information_schema.tables where table_schema = 'public' and table_name ~* 'expense|payment|package|invoice|money') = 0);
+
+  -- feedback: admin-only to read, mark read and delete
+  perform pg_temp.as_user(WA, 'authenticated');
+  perform public.submit_feedback('WT-FB phase8', 'good');
+  perform pg_temp.as_user(ADM, 'authenticated');
+  select id into hid from public.feedback where message = 'WT-FB phase8';
+  perform pg_temp.rec('12 feedback', 'ADMIN can read a worker''s feedback', hid is not null);
+  update public.feedback set is_read = true where id = hid; get diagnostics n = row_count;
+  perform pg_temp.rec('12 feedback', 'ADMIN can mark feedback as read', n = 1, n::text);
+  perform pg_temp.as_user(WA, 'authenticated');
+  begin update public.feedback set message = 'tampered' where id = hid; get diagnostics n = row_count; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('12 feedback', 'worker cannot edit feedback', ok);
+  begin delete from public.feedback where id = hid; get diagnostics n = row_count; ok := (n = 0); exception when others then ok := true; end;
+  perform pg_temp.rec('12 feedback', 'worker cannot delete feedback', ok);
+  perform pg_temp.as_user(ADM, 'authenticated');
+  delete from public.feedback where id = hid; get diagnostics n = row_count;
+  perform pg_temp.rec('12 feedback', 'ADMIN can delete feedback', n = 1, n::text);
+  reset role;
+exception when others then
+  reset role;
+  perform pg_temp.rec('12 money', 'THIS PART STOPPED WITH AN ERROR', false, sqlerrm);
+end $$;
+
 -- ---------- 4. clean up everything this run made
 reset role;
-delete from public.app_data where key = '__wt_probe__';
+delete from public.app_data where key like '\_\_wt\_%';
 do $$ begin
   if to_regclass('public.project_status') is not null then
     delete from public.project_status where track_code = '__wt_probe__';
@@ -577,10 +659,10 @@ delete from auth.users where email like '%@wt-test.invalid';
 
 -- ---------- 5. the answer: every line must say PASS
 select 'RESULT' as area,
-       case when count(*) < 60 then 'ONLY ' || count(*) || ' CHECKS RAN — the script stopped early, treat as FAILED'
+       case when count(*) < 114 then 'ONLY ' || count(*) || ' CHECKS RAN — the script stopped early, treat as FAILED'
             when count(*) filter (where not pass) = 0 then 'ALL ' || count(*) || ' CHECKS PASSED'
             else count(*) filter (where not pass) || ' CHECK(S) FAILED — see the FAIL lines' end as name,
-       case when count(*) >= 60 and count(*) filter (where not pass) = 0 then 'PASS' else 'FAIL' end as result,
+       case when count(*) >= 114 and count(*) filter (where not pass) = 0 then 'PASS' else 'FAIL' end as result,
        null::text as detail, 0 as seq
   from wt_results
 union all
