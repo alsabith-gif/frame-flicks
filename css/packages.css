@@ -1,0 +1,13 @@
+.packages-page { max-width: 760px; }
+.pk-intro { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.pk-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; font-size: 13px; flex-wrap: wrap; }
+.pk-arch { display: flex; gap: 6px; align-items: center; }
+.pk-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
+.pk-card.is-archived { opacity: .6; }
+.pk-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.pk-name { font-weight: 600; font-size: 15px; }
+.pk-price { font-weight: 600; white-space: nowrap; }
+.pk-sub { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.pk-items { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
+.pk-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.pk-rows .pk-row { display: grid; grid-template-columns: 1fr 90px 36px; gap: 6px; margin-bottom: 6px; }

@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 6 · Money tracking · build 14 (23 Oct 2026)
+**Current version:** Phase 7 · Package builder · build 15 (23 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -25,7 +25,10 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
 
-## Phase 6 (build 14) — built, waiting for owner's "it works"
+## Phase 7 (build 15) — built, waiting for owner's "it works"
+Packages page + library (`packageLib` in pricing data), one-time invoice type, invoice reads library. Files: `pages/packages.html`, `js/pages/packages.js`, `css/packages.css`, `pricing.js`, `invoice.js`, `invoice.html/css`, `router.js`, `index.html`. Tests: `t19_packages.mjs`. No SQL. Next: Phase 8 — extend the security proof (feedback / money / packages / expenses are admin-only: they live in `app_data`, so add checks that workers cannot read it).
+
+## Phase 6 (build 14) — done
 Money page + partial-payment history. Files: `js/money.js`, `js/paymentsUi.js`, `js/pages/money.js`, `pages/money.html`, `css/money.css`; edits in `income.js`, `projectLibrary.js`, `invoice.js`, `clientAnalysis.js`, `clientDirectory.js`, `storage.js`, `cloud.js`, `router.js`, `index.html`. Tests: `t18_money.mjs`. No SQL. Next: Phase 7 Package builder.
 
 ## Phase 5 (build 13) — done

@@ -988,3 +988,29 @@ Upload the files from **`build14_changed_files_only.zip`** (it includes 5 new fi
 
 ### What changed (build 14)
 New: `js/money.js`, `js/paymentsUi.js`, `js/pages/money.js`, `pages/money.html`, `css/money.css`. Changed: `js/pages/income.js`, `js/pages/projectLibrary.js`, `js/pages/invoice.js`, `js/pages/clientAnalysis.js`, `js/pages/clientDirectory.js`, `js/storage.js`, `js/cloud.js`, `js/router.js`, `index.html`, `js/version.js`, docs.
+
+
+## Phase 7 — the Package builder (build 15)
+
+**No SQL and no function changes. You only upload files.**
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`build15_changed_files_only.zip`** (3 new files), replace the old ones, then press **Ctrl+Shift+R**. Settings → About should say **Phase 7 · Package builder · build 15**.
+
+### 2. Try it
+1. Open the new **📦 Packages** menu item. You see your packages (your old monthly ones and the weekly ones are already there, with your edits).
+2. Press **+ Add Package**. Fill: name, kind (**One-time / Monthly / Weekly**), price, revisions, delivery days. Under **What you deliver** add items with a number (e.g. Reels 4, Photo set 10). Under **Add-ons** add extras with a price (e.g. Drone shot ₹1,200). Save.
+3. **Edit**, **Duplicate** or **Archive** any package. Archived packages are hidden (tick *Show archived* to see them) and can be restored. They are never deleted, so old invoices keep working.
+4. **Invoice Maker:** Invoice type now has **One-time package**. Pick a package, the invoice fills itself (items, revisions, delivery). The package's add-ons appear in the **Extras** list. **Manage packages** opens the Packages page.
+5. Only you see packages. Workers and clients never do.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| No "Packages" in the menu | Upload `index.html` and `js/router.js` again, Ctrl+Shift+R. |
+| Packages page blank | Upload `js/pages/packages.js`, `pages/packages.html`, `css/packages.css`, `js/pricing.js`. |
+| No "One-time package" in Invoice type | Upload `pages/invoice.html` and `js/pages/invoice.js`. |
+| Invoice says "(no package yet)" | You archived every package of that kind. Restore one or add a new one in Packages. |
+
+### What changed (build 15)
+New: `js/pages/packages.js`, `pages/packages.html`, `css/packages.css`. Changed: `js/pricing.js`, `js/pages/invoice.js`, `pages/invoice.html`, `css/invoice.css`, `js/router.js`, `index.html`, `js/version.js`, docs.

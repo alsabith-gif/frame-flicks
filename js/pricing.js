@@ -17,6 +17,42 @@ export const DEFAULT_WEEKLY_PACKAGES = [
   { id: 'wk-premium', name: 'Weekly Premium', reels: 3, sessions: 2, price: 2800, popular: false, features: ['2 shooting sessions / week', ...FEAT, 'Instagram management'] },
 ];
 
+// ---------- Package library (Phase 7) ----------
+// One list of packages, each a one-time, monthly or weekly package:
+// { id, name, kind, price, items:[{label,count}], revisions, deliveryDays,
+//   addOns:[{label,price}], features:[extra lines], popular, active, reels, sessions }
+// `reels` / `sessions` are worked out from the items (kept so older code keeps working).
+export const PACKAGE_KINDS = { onetime: 'One-time', monthly: 'Monthly', weekly: 'Weekly' };
+const cnt = (v) => Math.max(0, Math.round(Number(v) || 0));
+export function normalizePackage(x, kind) {
+  const k = PACKAGE_KINDS[x.kind] ? x.kind : (PACKAGE_KINDS[kind] ? kind : 'monthly');
+  let items = Array.isArray(x.items) ? x.items : null;
+  if (!items) items = [{ label: 'Reels', count: cnt(x.reels) }, { label: 'Shooting sessions', count: cnt(x.sessions) }].filter((i) => i.count > 0);
+  items = items.map((i) => ({ label: String(i.label || '').trim().slice(0, 60), count: cnt(i.count) })).filter((i) => i.label);
+  const sum = (re) => items.filter((i) => re.test(i.label)).reduce((s, i) => s + i.count, 0);
+  return {
+    id: String(x.id || ('pk' + Date.now())), name: String(x.name || 'New package'), kind: k,
+    price: cnt(x.price), items, revisions: cnt(x.revisions), deliveryDays: cnt(x.deliveryDays),
+    addOns: (Array.isArray(x.addOns) ? x.addOns : []).map((a) => ({ label: String(a.label || '').trim().slice(0, 60), price: cnt(a.price) })).filter((a) => a.label),
+    // older packages described their sessions in a feature line; that is now an item, so don't show it twice
+    features: (Array.isArray(x.features) ? x.features : []).map((f) => String(f).trim()).filter((f) => f && (Array.isArray(x.items) || !/shooting sessions?/i.test(f))),
+    popular: !!x.popular, active: x.active !== false, reels: sum(/reel/i), sessions: sum(/session|shoot/i),
+  };
+}
+// The "what's included" lines shown on a package invoice.
+export function packageFeatures(k) {
+  const L = k.items.map((i) => `${i.count} ${i.label}`);
+  if (k.revisions) L.push(`${k.revisions} revision${k.revisions > 1 ? 's' : ''} included`);
+  if (k.deliveryDays) L.push(`Delivery within ${k.deliveryDays} day${k.deliveryDays > 1 ? 's' : ''}`);
+  return [...L, ...k.features];
+}
+// Big numbers on the invoice ("count | label"). extraReels are reels added as extras.
+export function packageStats(k, extraReels = 0) {
+  const items = k.items.map((i) => ({ ...i }));
+  if (extraReels) { const r = items.find((i) => /reel/i.test(i.label)); if (r) r.count += extraReels; else items.unshift({ label: 'Reels', count: extraReels }); }
+  return items.slice(0, 3).map((i) => `${i.count} | ${i.label}`);
+}
+
 export const DEFAULT_PRICING = {
   base: 2000,
   baseHours: 5,
@@ -44,6 +80,10 @@ export const DEFAULT_PRICING = {
     weeklyPayNote: 'Your shoot slot is confirmed once payment is received.',
     weeklyTerms: 'Package covers one week (7 days).\nUnused reels do not carry over.\nExtra reels are billed at the quoted rate.',
     weeklyFooter: "Let's grow your business on Instagram",
+    onetimeTag: 'Instagram content made simple',
+    onetimePayNote: 'Your shoot is confirmed once payment is received.',
+    onetimeTerms: 'This is a one-time package.\nRevisions beyond those included are billed separately.\nExtra reels are billed at the quoted rate.',
+    onetimeFooter: "Thank you for choosing us",
     terms: 'An advance confirms your date.\nExtra hours are billed at the quoted hourly rate.\nRaw footage is not included.',
   },
   distribution: [
@@ -83,6 +123,10 @@ export function mergePricing(saved) {
     ? s.distribution.map((row) => ({ ...row }))
     : d.distribution.map((row) => ({ ...row }));
   out.packages = (Array.isArray(s.packages) && s.packages.length ? s.packages : DEFAULT_PACKAGES).map((x) => ({ ...x, features: [...(x.features || [])] }));
+  const lib = Array.isArray(s.packageLib) && s.packageLib.length
+    ? s.packageLib.map((x) => normalizePackage(x))
+    : [...out.packages.map((x) => normalizePackage(x, 'monthly')), ...(Array.isArray(s.weeklyPackages) && s.weeklyPackages.length ? s.weeklyPackages : DEFAULT_WEEKLY_PACKAGES).map((x) => normalizePackage(x, 'weekly'))];
+  out.packageLib = lib;
   out.weeklyPackages = (Array.isArray(s.weeklyPackages) && s.weeklyPackages.length ? s.weeklyPackages : DEFAULT_WEEKLY_PACKAGES).map((x) => ({ ...x, features: [...(x.features || [])] }));
   return out;
 }

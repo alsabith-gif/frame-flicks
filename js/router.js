@@ -7,6 +7,7 @@ const PAGE_META = {
   analysis: { title: 'Analysis', addLabel: null },
   income: { title: 'Dashboard', addLabel: '+ Add Project' },
   money: { title: 'Money', addLabel: null },
+  packages: { title: 'Packages', addLabel: '+ Add Package' },
   clientAnalysis: { title: 'Client Analysis', addLabel: null },
   clientDirectory: { title: 'Client Directory', addLabel: null },
   workers: { title: 'Workers', addLabel: '+ Add Worker' },

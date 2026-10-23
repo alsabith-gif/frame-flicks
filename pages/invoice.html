@@ -1,7 +1,7 @@
 <div class="inv-wrap">
   <div class="inv-form settings-card" id="invForm" data-type="function">
     <div class="inv-head"><h2 class="settings-title">Invoice details</h2><button class="btn btn-ghost btn-sm" id="invPricesBtn">✏️ Edit prices</button></div>
-    <div class="form-field" style="margin-bottom:12px"><label>Invoice type</label><select id="invType"><option value="function">Function shoot</option><option value="monthly">Monthly package</option><option value="weekly">Weekly package</option></select></div>
+    <div class="form-field" style="margin-bottom:12px"><label>Invoice type</label><select id="invType"><option value="function">Function shoot</option><option value="monthly">Monthly package</option><option value="weekly">Weekly package</option><option value="onetime">One-time package</option></select></div>
     <div class="form-grid">
       <div class="form-field"><label>Client name</label><input type="text" id="invClient"></div>
       <div class="form-field"><label>Client phone</label><input type="text" id="invPhone"></div>
@@ -15,10 +15,10 @@
       <div class="form-field only-mo"><label>Package</label><select id="invPkg"></select></div>
       <div class="form-field only-mo"><label>Package price (₹)</label><input type="number" id="invPkgPrice" min="0"></div>
       <div class="form-field only-mo"><label>Period starts</label><input type="date" id="invPStart"></div>
-      <div class="form-field only-mo"><label>Period ends</label><input type="date" id="invPEnd"></div>
+      <div class="form-field only-mo no-one"><label>Period ends</label><input type="date" id="invPEnd"></div>
       <div class="form-field"><label>Colour theme</label><select id="invTheme"><option value="gold">Gold and charcoal</option><option value="green">Green and gold</option><option value="teal">Teal</option><option value="rose">Rose</option><option value="blue">Blue</option></select></div>
     </div>
-    <div class="only-mo inv-add" style="margin-top:10px"><button class="btn btn-ghost btn-sm" id="invPkgEdit">📦 Edit packages</button></div>
+    <div class="only-mo inv-add" style="margin-top:10px"><button class="btn btn-ghost btn-sm" id="invPkgEdit">📦 Manage packages</button></div>
     <h3 class="inv-sub"><span class="only-fn">Price add-ons</span><span class="only-mo">Extras</span></h3>
     <div id="invLines"></div>
     <div class="inv-add"><select id="invAddSel"></select><button class="btn btn-primary btn-sm" id="invAddBtn">+ Add</button></div>
