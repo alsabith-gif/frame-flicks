@@ -7,7 +7,6 @@ const PAGE_META = {
   analysis: { title: 'Analysis', addLabel: null },
   income: { title: 'Dashboard', addLabel: '+ Add Project' },
   clientAnalysis: { title: 'Client Analysis', addLabel: null },
-  contentTypes: { title: 'Content Types', addLabel: null },
   clientDirectory: { title: 'Client Directory', addLabel: null },
   workers: { title: 'Workers', addLabel: '+ Add Worker' },
   feedback: { title: 'Feedback', addLabel: null },
@@ -89,6 +88,7 @@ function wireAddButton(name, mod) {
 }
 
 export async function showPage(name) {
+  if (name === 'contentTypes') name = 'income'; // page removed in Phase 5 (list is now edited in Settings)
   if (!PAGE_META[name]) name = 'prospects';
   const outlet = document.getElementById('page-outlet');
 

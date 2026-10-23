@@ -10,6 +10,13 @@ export const DEFAULT_PACKAGES = [
   { id: 'premium', name: 'Premium', reels: 12, sessions: 4, price: 10000, popular: false, features: ['4 shooting sessions / month | 1 time per week', ...FEAT, 'Instagram management'] },
 ];
 
+// Weekly packages — same shape as the monthly ones, priced and counted per week.
+export const DEFAULT_WEEKLY_PACKAGES = [
+  { id: 'wk-starter', name: 'Weekly Starter', reels: 1, sessions: 1, price: 1000, popular: false, features: ['1 shooting session / week', ...FEAT] },
+  { id: 'wk-growth', name: 'Weekly Growth', reels: 2, sessions: 1, price: 1800, popular: true, features: ['1 shooting session / week', ...FEAT, 'Instagram management'] },
+  { id: 'wk-premium', name: 'Weekly Premium', reels: 3, sessions: 2, price: 2800, popular: false, features: ['2 shooting sessions / week', ...FEAT, 'Instagram management'] },
+];
+
 export const DEFAULT_PRICING = {
   base: 2000,
   baseHours: 5,
@@ -33,6 +40,10 @@ export const DEFAULT_PRICING = {
     monthlyPayNote: 'Your shoot slots are confirmed once payment is received.',
     monthlyTerms: 'Package covers one calendar month.\nUnused reels do not carry over.\nExtra reels are billed at the quoted rate.',
     monthlyFooter: "Let's grow your business on Instagram",
+    weeklyTag: 'Instagram content made simple',
+    weeklyPayNote: 'Your shoot slot is confirmed once payment is received.',
+    weeklyTerms: 'Package covers one week (7 days).\nUnused reels do not carry over.\nExtra reels are billed at the quoted rate.',
+    weeklyFooter: "Let's grow your business on Instagram",
     terms: 'An advance confirms your date.\nExtra hours are billed at the quoted hourly rate.\nRaw footage is not included.',
   },
   distribution: [
@@ -72,6 +83,7 @@ export function mergePricing(saved) {
     ? s.distribution.map((row) => ({ ...row }))
     : d.distribution.map((row) => ({ ...row }));
   out.packages = (Array.isArray(s.packages) && s.packages.length ? s.packages : DEFAULT_PACKAGES).map((x) => ({ ...x, features: [...(x.features || [])] }));
+  out.weeklyPackages = (Array.isArray(s.weeklyPackages) && s.weeklyPackages.length ? s.weeklyPackages : DEFAULT_WEEKLY_PACKAGES).map((x) => ({ ...x, features: [...(x.features || [])] }));
   return out;
 }
 

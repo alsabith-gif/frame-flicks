@@ -15,7 +15,7 @@
 .inv-saved-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .inv-saved-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-#invForm[data-type="function"] .only-mo, #invForm[data-type="monthly"] .only-fn { display: none !important; }
+#invForm[data-type="function"] .only-mo, #invForm[data-type="monthly"] .only-fn, #invForm[data-type="weekly"] .only-fn { display: none !important; }
 
 /* ---------- The invoice itself (also used by the print window) ---------- */
 .fi { font-family: 'DM Sans', system-ui, sans-serif; background: #fffdf8; color: #221f1a; border: 1px solid #e6dfce; border-radius: 12px; overflow: hidden; font-size: 13px; line-height: 1.5; }

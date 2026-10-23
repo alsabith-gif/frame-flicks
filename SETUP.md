@@ -931,3 +931,32 @@ Upload the files from **`phase4_changed_files_only.zip`**, replace the old ones,
 
 ### What changed (build 12)
 `js/pages/projectLibrary.js`, `pages/projectLibrary.html`, `css/projectLibrary.css`, `js/pages/income.js` (delete/edit/links can now be used from the Projects page), `js/router.js`, `index.html`, `js/pages/invoice.js` (a comment), version, notes.
+
+
+## Phase 5 — weekly package invoice + Content Types cleanup (build 13)
+
+**No SQL and no function changes. You only upload files.**
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`build13_changed_files_only.zip`** and replace the old ones. **Also delete these 3 old files on GitHub** (they are not used any more; leaving them is harmless): `pages/contentTypes.html`, `js/pages/contentTypes.js`, `css/contentTypes.css`. Then press **Ctrl+Shift+R**. Settings → About should say **Phase 5 · Weekly invoice + Content Types cleanup · build 13**.
+
+### 2. Try the weekly invoice
+1. Open **Invoice Maker**. In **Invoice type** choose **Weekly package**.
+2. Pick a package (Weekly Starter / Growth / Premium), type the client name. The invoice shows "Weekly invoice", "/ week", "Renews weekly".
+3. The period is 7 days. Change **Period starts** and the end moves 6 days later by itself.
+4. Press **Save**. A project called "Weekly package — …" appears on the Dashboard.
+5. **Edit packages** changes the weekly packages only. **Edit prices** has new Weekly tagline / payment note / footer boxes. Your monthly packages and old invoices are untouched.
+
+### 3. Content Types
+The **Content Types** menu item is gone. The choices still appear in the project form. To change them: **Settings → Project content types** (one per line) → Save.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| No "Weekly package" in Invoice type | Upload `pages/invoice.html` and `js/pages/invoice.js` again, Ctrl+Shift+R. |
+| Weekly packages show monthly names | Upload `js/pricing.js` again. |
+| "Content Types" still in menu | Upload `index.html` and `js/router.js` again. |
+| No "Project content types" box in Settings | Upload `js/pages/settings.js` and `pages/settings.html` again. |
+
+### What changed (build 13)
+`js/pages/invoice.js`, `pages/invoice.html`, `css/invoice.css`, `js/pricing.js`, `js/pages/settings.js`, `pages/settings.html`, `js/router.js`, `index.html`, `js/version.js`, docs. Removed: the 3 Content Types files.

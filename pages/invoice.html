@@ -1,7 +1,7 @@
 <div class="inv-wrap">
   <div class="inv-form settings-card" id="invForm" data-type="function">
     <div class="inv-head"><h2 class="settings-title">Invoice details</h2><button class="btn btn-ghost btn-sm" id="invPricesBtn">✏️ Edit prices</button></div>
-    <div class="form-field" style="margin-bottom:12px"><label>Invoice type</label><select id="invType"><option value="function">Function shoot</option><option value="monthly">Monthly package</option></select></div>
+    <div class="form-field" style="margin-bottom:12px"><label>Invoice type</label><select id="invType"><option value="function">Function shoot</option><option value="monthly">Monthly package</option><option value="weekly">Weekly package</option></select></div>
     <div class="form-grid">
       <div class="form-field"><label>Client name</label><input type="text" id="invClient"></div>
       <div class="form-field"><label>Client phone</label><input type="text" id="invPhone"></div>
@@ -34,7 +34,7 @@
     <div class="only-mo">
       <h3 class="inv-sub">Package features <span class="muted" style="font-weight:400">— one per line, use | for a small note</span></h3>
       <textarea id="invFeatures" rows="6" style="width:100%"></textarea>
-      <h3 class="inv-sub">Your month with us <span class="muted" style="font-weight:400">— one per line: number | label</span></h3>
+      <h3 class="inv-sub">Numbers shown on the invoice <span class="muted" style="font-weight:400">— one per line: number | label</span></h3>
       <textarea id="invStats" rows="3" style="width:100%"></textarea>
       <div class="inv-add" style="margin-top:6px"><button class="btn btn-ghost btn-sm" id="invMoReset">↺ Reset to package</button></div>
     </div>

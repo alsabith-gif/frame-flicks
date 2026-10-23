@@ -1,6 +1,6 @@
 // pages/settings.js — app mode switcher + on-device Face ID lock toggle.
 
-import { getAppMode, getNotifPrefs, saveNotifPrefs } from '../storage.js';
+import { getAppMode, getNotifPrefs, saveNotifPrefs, getContentTypes, saveContentTypes } from '../storage.js';
 import { EVENT_TYPES } from '../reminderRules.js';
 import * as push from '../push.js';
 import { showToast } from '../toast.js';
@@ -244,12 +244,32 @@ async function renderContact() {
   });
 }
 
+// The list of choices shown as "Content type" in the project form (one per line).
+function renderContentTypes() {
+  const box = document.getElementById('ctypesCard');
+  if (!box) return;
+  box.innerHTML = `<h2 class="settings-title">Project content types</h2>
+    <p class="settings-desc">The choices in the "Content type" box when you add a project. One per line. Projects that already have a type keep it.</p>
+    <textarea id="ctypesText" rows="6" style="width:100%"></textarea>
+    <div class="form-actions" style="margin-top:8px"><button class="btn btn-primary btn-sm" id="ctypesSave">Save</button></div>`;
+  const ta = document.getElementById('ctypesText');
+  ta.value = getContentTypes().join('\n');
+  document.getElementById('ctypesSave').addEventListener('click', () => {
+    const seen = new Set();
+    const list = ta.value.split('\n').map((x) => x.trim()).filter((x) => x && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase()));
+    saveContentTypes(list);
+    ta.value = list.join('\n');
+    showToast('Content types saved');
+  });
+}
+
 export function init() {
   const v = document.getElementById('appVersion');
   if (v) v.textContent = `Version: ${APP_VERSION} · ${APP_BUILD}`;
   renderNotifs();
   renderRoles();
   renderContact();
+  renderContentTypes();
   renderModeSwitcher();
   wireModeSwitcher();
   renderFaceLock();

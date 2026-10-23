@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 4 · Projects page · build 12 (22 Oct 2026)
+**Current version:** Phase 5 · Weekly invoice + Content Types cleanup · build 13 (22 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -24,6 +24,9 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 ## Phase 3 (build 11) — done
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
+
+## Phase 5 (build 13) — built, waiting for owner's "it works"
+Weekly package invoice (owner's new request) in `js/pages/invoice.js` + `pricing.js` (`weeklyPackages`, `business.weekly*`). Content Types page removed; list edited in Settings (`settings.js` `renderContentTypes`). No SQL. Tests: `t17_weekly_ctypes.mjs`. Next: Phase 6 Money tracking.
 
 ## Phase 4 (build 12) — done
 Projects page + project detail inside `js/pages/projectLibrary.js` (state `detailId`, `#plDetail`). Renamed menu/title to "Projects".

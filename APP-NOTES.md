@@ -105,7 +105,7 @@ Supabase table `app_data` (key/value rows) by `js/cloud.js`. A worker's device n
 
 ### `js/pages/` (admin pages, one per sidebar item)
 `prospects`, `goals`, `analysis`, `income` (the **Dashboard**), `clientAnalysis`, `clientDirectory`, **`projectLibrary`** (shown as **Projects**; the internal name stays `projectLibrary` so old links work — a grid of ALL projects; opening one shows a full **detail page**: overview, stage history, payments (incl. invoice advance), invoice, crew from `worker_tasks`, price split, saved links, client progress link, notes; Edit / Delete / links reuse `income.js` exports `openIncomeModal`, `confirmDeleteProject`, `openLinksModal`, `syncTrackerStatus`, `onProjectsChanged`),
-`scripts`, `followup`, `calendar`, `invoice`, `priceSplit`, `contentTypes`, `tips`,
+`scripts`, `followup`, `calendar`, `invoice`, `priceSplit`, `tips`,
 **`workers`** (add/edit/deactivate workers with role tick-boxes; each worker opens into a **detail page** — roles, status, last login, actions, job counts, earnings per month, pay history, every job with filters, mark paid / undo; no delete; never shows feedback — plus the all-crew jobs list),
 **`feedback`** (admin-only: crew feedback, date + mood only, mark read, delete), **`settings`** (mode switcher, Face ID, notifications, **Crew roles manager**, **crew contact number**, About, logout).
 Each has a matching `pages/<name>.html` and `css/<name>.css`.
@@ -214,6 +214,7 @@ When you change behaviour: add/adjust a test, run **all** suites, and only then 
 | Phase 5 | Oct 2026 | Earnings, marking paid, pay guard trigger (PART 5). |
 | Phase 6 | Oct 2026 | Push notifications, cron sender (PART 6A/6B), edge function `send-reminders`. |
 | Final (build 7) | 14 Oct 2026 | PART 7, security proof `worker-tests.sql` (95 checks), access tests. |
+| Phase 5 (build 13) | 22 Oct 2026 | **Weekly package invoice** (`type: 'weekly'` in `invoice.js`, same layout as monthly; `isMo()` = any package invoice, `isWk()` = weekly; own `P.weeklyPackages` + `business.weeklyTag/PayNote/Terms/Footer` in `pricing.js`; 7-day period; project named "Weekly package — …"; old invoices unchanged). **Content Types page removed** (menu, route, `pages/contentTypes.html`, `js/pages/contentTypes.js`, `css/contentTypes.css`; old route redirects to Dashboard); the list (`ve_ct_content_types`) is now edited in Settings → "Project content types". No SQL. |
 | Phase 4 (build 12) | 22 Oct 2026 | "Project Library" renamed **Projects**; project detail page (`projectLibrary.js`); the Dashboard's delete logic became the shared `confirmDeleteProject` (same paid-crew warning); saved links only clickable if http(s). No SQL. |
 | Phase 3 (build 11) | 20 Oct 2026 | Worker detail page on the Workers page (Open button / name link). Removed the long anonymity warning from the worker feedback screen (kept: "does not save or show who sent it"). No SQL. |
 | Phase 2 (build 10) | 20 Oct 2026 | PART 9 (`crew_contact`, `feedback`, `submit_feedback`); worker Profile: Call admin + anonymous feedback; admin Settings: crew contact number; admin Feedback page; proof now 95 checks. |
@@ -221,10 +222,9 @@ When you change behaviour: add/adjust a test, run **all** suites, and only then 
 | Roles update (build 8) | 18 Oct 2026 | Multi-role workers; admin-defined roles (Settings → Crew roles, PART 8, `crew_roles`, `job_roles`); `roles.js`; `main_date` rule replaces hard-coded editor logic; `admin-create-worker` takes `job_roles`; this notes file added. |
 
 ## 11b. Roadmap (the owner's "big update" plan)
-Done: worker status, earnings and paying, notifications, security proof, multi-role workers, Phase 1 (5 tabs), **Phase 2 (contact admin + feedback), Phase 3 (worker detail page), **Phase 4 (Projects page)**.
+Done (also Phase 5: weekly invoice + Content Types page removed): worker status, earnings and paying, notifications, security proof, multi-role workers, Phase 1 (5 tabs), **Phase 2 (contact admin + feedback), Phase 3 (worker detail page), **Phase 4 (Projects page)**.
 Next, in this order (owner confirmed):
-5 Remove the Content Types *page* (keep the choices in the
-project form) · 6 Money tracking (own expenses + partial payments) · 7 Package builder · 8 Extend the security proof.
+6 Money tracking (own expenses + partial payments) · 7 Package builder · 8 Extend the security proof.
 **Dropped by the owner: "Delete worker"** (too risky for past pay records). See `HANDOFF.md`.
 
 ## 12. How to keep this file up to date

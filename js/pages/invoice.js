@@ -25,12 +25,20 @@ const THEMES = {
 const pad = (n) => String(n).padStart(2, '0');
 function todayStr() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 const monthStart = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+const addDays = (st, n) => { const d = new Date(st + 'T00:00:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const weekEnd = (st) => addDays(st, 6);
 const monthEnd = (st) => { const d = new Date(st + 'T00:00:00'); const e = new Date(d.getFullYear(), d.getMonth() + 1, 0); return `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`; };
 function fresh(type = 'function') {
-  const k = P.packages[0] || {};
-  return { type, pkgId: k.id, pkgPrice: k.price || 0, handle: '', pStart: monthStart(), pEnd: monthEnd(monthStart()), features: null, stats: null, mTerms: P.business.monthlyTerms || '', id: uid(), no: '', client: '', phone: '', event: '', location: '', eventDate: '', date: todayStr(), size: 'small', delivery: 'normal', lines: [], discount: 0, advance: 0, theme: type === 'monthly' ? 'green' : 'gold', groups: null, terms: P.business.terms || '' };
+  const wk = type === 'weekly';
+  const k = (wk ? P.weeklyPackages : P.packages)[0] || {};
+  const ps = wk ? todayStr() : monthStart();
+  return { type, pkgId: k.id, pkgPrice: k.price || 0, handle: '', pStart: ps, pEnd: wk ? weekEnd(ps) : monthEnd(ps), features: null, stats: null, mTerms: (wk ? P.business.weeklyTerms : P.business.monthlyTerms) || '', id: uid(), no: '', client: '', phone: '', event: '', location: '', eventDate: '', date: todayStr(), size: 'small', delivery: 'normal', lines: [], discount: 0, advance: 0, theme: type === 'function' ? 'gold' : 'green', groups: null, terms: P.business.terms || '' };
 }
-const isMo = () => S.type === 'monthly';
+// isMo = any package invoice (monthly or weekly); isWk = the weekly kind.
+const isMo = () => S.type === 'monthly' || S.type === 'weekly';
+const isWk = () => S.type === 'weekly';
+const pkgList = () => (isWk() ? P.weeklyPackages : P.packages);
+const PER = () => (isWk() ? 'week' : 'month');
 // Invoice numbers run INV00001, INV00002, ... The next number is one more than
 // the highest INV##### already used by a saved invoice (or by a project that
 // came from a since-deleted invoice, so numbers are never handed out twice).
@@ -42,7 +50,7 @@ function nextInvNo() {
 }
 const noTaken = (no) => getInvoices().some((x) => x.no === no && x.id !== S.id);
 const invNo = () => S.no || nextInvNo();
-const pkgOf = () => P.packages.find((x) => x.id === S.pkgId) || P.packages[0];
+const pkgOf = () => pkgList().find((x) => x.id === S.pkgId) || pkgList()[0];
 const extraReelsQty = () => S.lines.filter((l) => l.key === 'reel').reduce((n, l) => n + (Number(l.qty) || 0), 0);
 const featList = () => S.features || pkgOf().features;
 const statList = () => S.stats || [`${pkgOf().reels + extraReelsQty()} | Reels`, `${pkgOf().sessions} | Shooting sessions`];
@@ -80,29 +88,29 @@ function monthlyHtml() {
   const feats = featList().map((f) => { const [a, c] = split(f); return `<div class="fi-feat"><div>${escHtml(a)}${c ? `<span class="fi-sub">${escHtml(c)}</span>` : ''}</div></div>`; }).join('');
   const stats = statList().map((x) => { const [n, l] = split(x); return `<div class="fi-card fi-stat"><b>${escHtml(n)}</b><span class="fi-mut">${escHtml(l)}</span></div>`; }).join('');
   return `<div class="fi" style="${vars}">
-    <div class="fi-head"><div><div class="fi-brand">${escHtml(b.name)}</div><div class="fi-tag">${escHtml(b.monthlyTag || '')}</div></div>
-      <div class="fi-no"><small>Monthly invoice</small><b>${invNo()}</b><div class="fi-tag">Issued ${fmtDate(S.date)}</div></div></div>
+    <div class="fi-head"><div><div class="fi-brand">${escHtml(b.name)}</div><div class="fi-tag">${escHtml((isWk() ? b.weeklyTag : b.monthlyTag) || '')}</div></div>
+      <div class="fi-no"><small>${isWk() ? 'Weekly' : 'Monthly'} invoice</small><b>${invNo()}</b><div class="fi-tag">Issued ${fmtDate(S.date)}</div></div></div>
     <div class="fi-strip"></div>
     <div class="fi-pad fi-two">
       <div class="fi-card"><p class="fi-lbl">Billed to</p><div class="fi-big">${escHtml(S.client || '—')}</div><div class="fi-mut">${escHtml([S.handle, S.phone].filter(Boolean).join(' · '))}</div></div>
-      <div class="fi-card"><p class="fi-lbl">Package period</p><div class="fi-big">${fmtDate(S.pStart)} to ${fmtDate(S.pEnd)}</div><div class="fi-mut">Renews monthly</div></div>
+      <div class="fi-card"><p class="fi-lbl">Package period</p><div class="fi-big">${fmtDate(S.pStart)} to ${fmtDate(S.pEnd)}</div><div class="fi-mut">Renews ${isWk() ? 'weekly' : 'monthly'}</div></div>
     </div>
     <div class="fi-pad"><div class="fi-plan">
       ${k.popular ? '<div class="fi-pop"><span>MOST POPULAR</span></div>' : ''}
       <div class="fi-ptop"><div class="fi-pname">${escHtml(k.name)}</div>
-        <div class="fi-reels"><b>${k.reels}</b><span>REELS<br>/ MONTH</span></div>
-        <div class="fi-pprice">${currency(S.pkgPrice)} <small>/ month</small></div></div>
+        <div class="fi-reels"><b>${k.reels}</b><span>REELS<br>/ ${PER().toUpperCase()}</span></div>
+        <div class="fi-pprice">${currency(S.pkgPrice)} <small>/ ${PER()}</small></div></div>
       <div class="fi-feats">${feats}</div></div></div>
-    ${stats ? `<div class="fi-pad"><p class="fi-sec">Your month with us</p><div class="fi-stats">${stats}</div></div>` : ''}
+    ${stats ? `<div class="fi-pad"><p class="fi-sec">Your ${PER()} with us</p><div class="fi-stats">${stats}</div></div>` : ''}
     <div class="fi-pad fi-two" style="align-items:end">
-      <div class="fi-card fi-pay"><p class="fi-lbl">How to pay</p>${b.upi ? `<div class="fi-big">UPI: ${escHtml(b.upi)}</div>` : ''}${b.phone ? `<div>Phone: ${escHtml(b.phone)}</div>` : ''}<div style="margin-top:4px">${escHtml(b.monthlyPayNote || '')}</div></div>
+      <div class="fi-card fi-pay"><p class="fi-lbl">How to pay</p>${b.upi ? `<div class="fi-big">UPI: ${escHtml(b.upi)}</div>` : ''}${b.phone ? `<div>Phone: ${escHtml(b.phone)}</div>` : ''}<div style="margin-top:4px">${escHtml((isWk() ? b.weeklyPayNote : b.monthlyPayNote) || '')}</div></div>
       <div><div class="fi-tr"><span>${escHtml(k.name)} package</span><span>${currency(S.pkgPrice)}</span></div>
         ${lines.map((l) => `<div class="fi-tr"><span>${escHtml(l.label)} (${l.qty} × ${currency(l.rate)})</span><span>${currency(l.qty * l.rate)}</span></div>`).join('')}
         ${disc ? `<div class="fi-tr fi-mut"><span>Discount</span><span>− ${currency(disc)}</span></div>` : ''}
         <div class="fi-grand"><div class="fi-tr"><span>Total</span><span>${currency(sub - disc)}</span></div></div></div>
     </div>
     <div class="fi-pad"><div class="fi-card fi-cream"><p class="fi-lbl">Terms</p>${escHtml(S.mTerms).replace(/\n/g, '<br>')}</div></div>
-    <div class="fi-foot fi-tag2">${escHtml(b.monthlyFooter || '')}</div></div>`;
+    <div class="fi-foot fi-tag2">${escHtml((isWk() ? b.weeklyFooter : b.monthlyFooter) || '')}</div></div>`;
 }
 function invoiceHtml() { return isMo() ? monthlyHtml() : functionHtml(); }
 
@@ -162,7 +170,7 @@ function syncProjectFromInvoice() {
   const { grand, advance } = invoiceTotals();
   const status = grand > 0 && advance >= grand ? 'Paid' : advance > 0 ? 'Partial' : 'Pending';
   const name = isMo()
-    ? `Monthly package — ${pkgOf().name} (${fmtDate(S.pStart)} – ${fmtDate(S.pEnd)})`
+    ? `${isWk() ? 'Weekly' : 'Monthly'} package — ${pkgOf().name} (${fmtDate(S.pStart)} – ${fmtDate(S.pEnd)})`
     : (S.event || '').trim() || `Function — ${S.client || 'Untitled'}`;
   const clientRecord = findOrCreateClient(S.client, 'Other');
   const fields = {
@@ -206,7 +214,7 @@ function renderPreview() {
 function fillSelects() {
   $('invSize').innerHTML = Object.keys(SIZE_LABELS).map((k) => `<option value="${k}">${SIZE_LABELS[k]}${P.sizes[k] ? ` (+${currency(P.sizes[k])})` : ''}</option>`).join('');
   $('invDelivery').innerHTML = Object.keys(DELIVERY_LABELS).map((k) => `<option value="${k}">${DELIVERY_LABELS[k]}${P.delivery[k] ? ` (+${P.delivery[k]}%)` : ''}</option>`).join('');
-  $('invPkg').innerHTML = P.packages.map((x) => `<option value="${x.id}">${escHtml(x.name)} — ${x.reels} reels, ${currency(x.price)}</option>`).join('');
+  $('invPkg').innerHTML = pkgList().map((x) => `<option value="${x.id}">${escHtml(x.name)} — ${x.reels} reels, ${currency(x.price)}</option>`).join('');
   $('invPkg').value = pkgOf().id;
   $('invAddSel').innerHTML = addOnCatalog(P).filter((a) => !isMo() || ['reel', 'custom'].includes(a.key)).map((a) => `<option value="${a.key}">${a.label}${a.quote ? '' : ` — ${currency(a.rate)}${a.unit ? '/' + a.unit : ''}`}</option>`).join('');
   $('invSize').value = S.size; $('invDelivery').value = S.delivery; $('invTheme').value = S.theme;
@@ -258,7 +266,7 @@ function loadToForm() {
 function renderSaved() {
   const list = getInvoices();
   $('invSaved').innerHTML = list.length ? list.slice().reverse().map((x) => `
-    <div class="inv-saved-row" data-id="${x.id}"><span>${x.type === 'monthly' ? '📅' : '🎬'} ${escHtml(x.no)} · ${escHtml(x.client || '—')}${x.projectId ? ' · 🔗 Project' : ''}</span>
+    <div class="inv-saved-row" data-id="${x.id}"><span>${x.type === 'monthly' ? '📅' : x.type === 'weekly' ? '🗓️' : '🎬'} ${escHtml(x.no)} · ${escHtml(x.client || '—')}${x.projectId ? ' · 🔗 Project' : ''}</span>
       <button class="btn btn-ghost btn-sm" data-open>Open</button><button class="btn btn-icon btn-sm" data-rm>🗑️</button></div>`).join('') : '<p class="muted" style="font-size:13px">Nothing saved yet.</p>';
   $('invSaved').querySelectorAll('.inv-saved-row').forEach((el) => {
     const id = el.dataset.id;
@@ -271,7 +279,7 @@ const PRICE_FIELDS = [
   ['Base package ₹', 'base'], ['Hours included', 'baseHours'], ['Reels included', 'baseReels'], ['Crew size', 'baseCrew'],
   ['Medium function +₹', 'sizes.medium'], ['Large function +₹', 'sizes.large'], ['Extra reel ₹', 'extraReel'], ['Extra shooting hour ₹', 'extraHour'],
   ['Extra location ₹', 'extraLocation'], ['Travel ₹ per km', 'perKm'], ['24-hour delivery +%', 'delivery.fast'], ['Same-day delivery +%', 'delivery.sameDay'],
-  ['Business name', 'business.name', 1], ['Phone', 'business.phone', 1], ['UPI ID', 'business.upi', 1], ['Payment note', 'business.payNote', 1], ['Invoice footer', 'business.footer', 1], ['Monthly tagline', 'business.monthlyTag', 1], ['Monthly payment note', 'business.monthlyPayNote', 1], ['Monthly footer', 'business.monthlyFooter', 1],
+  ['Business name', 'business.name', 1], ['Phone', 'business.phone', 1], ['UPI ID', 'business.upi', 1], ['Payment note', 'business.payNote', 1], ['Invoice footer', 'business.footer', 1], ['Monthly tagline', 'business.monthlyTag', 1], ['Monthly payment note', 'business.monthlyPayNote', 1], ['Monthly footer', 'business.monthlyFooter', 1], ['Weekly tagline', 'business.weeklyTag', 1], ['Weekly payment note', 'business.weeklyPayNote', 1], ['Weekly footer', 'business.weeklyFooter', 1],
 ];
 const pathGet = (o, p) => p.split('.').reduce((a, k) => a[k], o);
 function pathSet(o, p, v) { const ks = p.split('.'); const last = ks.pop(); ks.reduce((a, k) => a[k], o)[last] = v; }
@@ -290,14 +298,14 @@ function openPrices() {
 }
 
 function openPackages() {
-  const W = P.packages.map((x) => ({ ...x, features: [...x.features] }));
+  const W = pkgList().map((x) => ({ ...x, features: [...x.features] }));
   const body = document.createElement('div');
   const draw = () => {
     body.innerHTML = W.map((k, i) => `<div data-k="${i}" style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px">
       <div class="form-grid">
         <div class="form-field"><label>Name</label><input data-f="name" value="${escHtml(k.name)}"></div>
-        <div class="form-field"><label>Price ₹ / month</label><input type="number" min="0" data-f="price" value="${k.price}"></div>
-        <div class="form-field"><label>Reels / month</label><input type="number" min="0" data-f="reels" value="${k.reels}"></div>
+        <div class="form-field"><label>Price ₹ / ${PER()}</label><input type="number" min="0" data-f="price" value="${k.price}"></div>
+        <div class="form-field"><label>Reels / ${PER()}</label><input type="number" min="0" data-f="reels" value="${k.reels}"></div>
         <div class="form-field"><label>Shooting sessions</label><input type="number" min="0" data-f="sessions" value="${k.sessions}"></div></div>
       <label style="font-size:13px;display:flex;gap:6px;align-items:center;margin:8px 0"><input type="checkbox" data-f="popular" ${k.popular ? 'checked' : ''} style="width:auto"> Show "Most popular"</label>
       <div class="form-field"><label>Included (one per line, "text | small note")</label><textarea data-f="features" rows="5">${escHtml(k.features.join('\n'))}</textarea></div>
@@ -311,8 +319,9 @@ function openPackages() {
     body.querySelector('#pkAdd').addEventListener('click', () => { W.push({ id: 'p' + Date.now(), name: 'New package', reels: 4, sessions: 2, price: 0, popular: false, features: [] }); draw(); });
     body.querySelector('#pkCancel').addEventListener('click', closeModal);
     body.querySelector('#pkSave').addEventListener('click', () => {
-      P.packages = W; savePricing(P);
-      if (!P.packages.find((x) => x.id === S.pkgId)) S.pkgId = P.packages[0].id;
+      if (isWk()) P.weeklyPackages = W; else P.packages = W;
+      savePricing(P);
+      if (!pkgList().find((x) => x.id === S.pkgId)) S.pkgId = pkgList()[0].id;
       S.pkgPrice = pkgOf().price; S.features = null; S.stats = null;
       closeModal(); showToast('Packages saved'); loadToForm();
     });
@@ -342,8 +351,14 @@ export function init() {
     .forEach((x) => bind(...x.split(':')));
   $('invTerms').addEventListener('input', () => { S[isMo() ? 'mTerms' : 'terms'] = $('invTerms').value; renderPreview(); });
   $('invType').addEventListener('change', () => {
+    const was = S.type;
     S.type = $('invType').value;
     if (isMo() && S.theme === 'gold') S.theme = 'green'; else if (!isMo() && S.theme === 'green') S.theme = 'gold';
+    // Monthly <-> weekly: switch to that kind's packages, period and default terms.
+    if (isMo() && was !== S.type) {
+      const f = fresh(S.type);
+      Object.assign(S, { pkgId: f.pkgId, pkgPrice: f.pkgPrice, pStart: f.pStart, pEnd: f.pEnd, features: null, stats: null, mTerms: f.mTerms });
+    }
     loadToForm();
   });
   $('invPkg').addEventListener('change', () => { S.pkgId = $('invPkg').value; S.pkgPrice = pkgOf().price; S.features = null; S.stats = null; loadToForm(); });
@@ -351,7 +366,7 @@ export function init() {
   const listBind = (id, k) => $(id).addEventListener('input', () => { S[k] = $(id).value.split('\n').map((x) => x.trim()).filter(Boolean); renderPreview(); });
   listBind('invFeatures', 'features'); listBind('invStats', 'stats');
   $('invMoReset').addEventListener('click', () => { S.features = null; S.stats = null; loadToForm(); });
-  $('invPStart').addEventListener('change', () => { S.pStart = $('invPStart').value; if (S.pStart) { S.pEnd = monthEnd(S.pStart); $('invPEnd').value = S.pEnd; } renderPreview(); });
+  $('invPStart').addEventListener('change', () => { S.pStart = $('invPStart').value; if (S.pStart) { S.pEnd = isWk() ? weekEnd(S.pStart) : monthEnd(S.pStart); $('invPEnd').value = S.pEnd; } renderPreview(); });
   $('invPEnd').addEventListener('change', () => { S.pEnd = $('invPEnd').value; renderPreview(); });
   $('invPkgEdit').addEventListener('click', openPackages);
   bind('invDiscount', 'discount', 1); bind('invAdvance', 'advance', 1);
@@ -361,7 +376,7 @@ export function init() {
   });
   $('invGAdd').addEventListener('click', () => { S.groups = [...groups(), { title: 'New section', items: [] }]; renderGroups(); renderPreview(); });
   $('invGReset').addEventListener('click', () => { S.groups = null; renderPreview(); });
-  $('invTermsDefault').addEventListener('click', () => { if (isMo()) P.business.monthlyTerms = S.mTerms; else P.business.terms = S.terms; savePricing(P); showToast('Saved as your default terms'); });
+  $('invTermsDefault').addEventListener('click', () => { if (isWk()) P.business.weeklyTerms = S.mTerms; else if (isMo()) P.business.monthlyTerms = S.mTerms; else P.business.terms = S.terms; savePricing(P); showToast('Saved as your default terms'); });
   $('invPricesBtn').addEventListener('click', openPrices);
   $('invNewBtn').addEventListener('click', () => { S = fresh(S.type); loadToForm(); });
   $('invSaveBtn').addEventListener('click', () => {
