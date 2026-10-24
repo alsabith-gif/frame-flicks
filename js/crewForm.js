@@ -119,7 +119,10 @@ export function initCrewSection(body, { projectId, distribution, getAmount, getR
         r.worker_id = e.target.value;
         const w = worker(r.worker_id);
         const mine = w ? workerRoles(w).filter((x) => CREW_ROLES.includes(x)) : [];
-        if (mine.length && !r.roleTouched) r.role = mine[0];   // default to their usual role
+        // default to one of their usual roles that this worker does not already have on this project
+        const taken = new Set(st.rows.filter((x) => x !== r && x.worker_id === r.worker_id).map((x) => x.role));
+        const free = mine.find((x) => !taken.has(x)) || CREW_ROLES.find((x) => !taken.has(x));
+        if (free && !r.roleTouched) r.role = free;
         recalcSuggestions(); render();
       } else if (e.target.classList.contains('crew-role')) {
         r.role = e.target.value; r.roleTouched = true;

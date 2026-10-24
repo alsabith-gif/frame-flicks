@@ -2,7 +2,9 @@
 // came in through (Outreach "Closed" or added manually on the Dashboard).
 
 import { received, balance } from '../money.js';
-import { getClients, getIncome } from '../storage.js';
+import { getClients, saveClients, getIncome } from '../storage.js';
+import { openConfirm } from '../modal.js';
+import { showToast } from '../toast.js';
 import { escHtml, formatDate, currency } from '../format.js';
 
 let state = { search: '', sort: 'recent' };
@@ -93,6 +95,7 @@ function openProfile(id) {
           <span class="badge badge-blue">${escHtml(client.source || 'Other')}</span>
           <span class="muted" style="margin-left:8px;">Client since ${formatDate(client.createdAt)}</span>
         </div>
+        <button type="button" class="btn btn-danger btn-sm" id="cdDeleteBtn">🗑️ Delete client</button>
       </div>
       <div class="cd-profile-stats">
         <div class="cd-stat"><span class="cd-stat-label">Total revenue (paid)</span><span class="cd-stat-value">${currency(revenue)}</span></div>
@@ -123,6 +126,21 @@ function openProfile(id) {
     </div>
   `;
   view.querySelector('#cdBackBtn').addEventListener('click', closeProfile);
+  view.querySelector('#cdDeleteBtn').addEventListener('click', () => {
+    const n = projects.length;
+    openConfirm(
+      n
+        ? `Delete the client "${client.name}" from the directory? Their ${n} project${n > 1 ? 's' : ''} and invoices are NOT deleted and keep this name. The client will come back in the directory if you save one of those projects or make a new invoice for them.`
+        : `Delete the client "${client.name}" from the directory? They have no projects.`,
+      () => {
+        saveClients(getClients().filter((c) => c.id !== id));
+        showToast('Client deleted');
+        closeProfile();
+      },
+      null,
+      'Delete client',
+    );
+  });
 }
 
 function closeProfile() {

@@ -2,5 +2,5 @@
 // tell at a glance which version of the app is actually live.
 // Bumped at the end of every worker-system phase.
 
-export const APP_VERSION = 'Upgrade 1 · PDF + layout fixes';
-export const APP_BUILD = 'build 17 · 24 Oct 2026';
+export const APP_VERSION = 'Upgrade 2 · Two roles per worker + Delete client';
+export const APP_BUILD = 'build 18 · 24 Oct 2026';

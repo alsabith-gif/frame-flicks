@@ -1064,3 +1064,32 @@ Upload the files from **`build17_changed_files_only.zip`**. It has **2 new big f
 
 ### What changed (build 17)
 `js/pages/invoice.js`, `pages/invoice.html`, `css/components.css`, `css/priceSplit.css`, `css/worker.css`, `js/version.js`, docs. New: `js/vendor/html2canvas.min.js`, `js/vendor/jspdf.umd.min.js`.
+
+
+## Upgrade 2 — one worker, two roles on a project + Delete client (build 18)
+
+**One small SQL step, then upload files.**
+
+### 1. Run the SQL (once)
+1. Supabase → **SQL Editor → New query**.
+2. Open `upgrade2-part10.sql`, copy everything, paste, press **Run**. (It is also PART 10 at the end of `worker-setup.sql`. Safe to run twice. It changes no data.)
+3. The result must show **one row** with `UNIQUE (project_id, worker_id, role)`.
+
+### 2. Upload the new app files (GitHub, same as before)
+Upload the files from **`build18_changed_files_only.zip`**, then Ctrl+Shift+R. Settings → About should say **Upgrade 2 · Two roles per worker + Delete client · build 18**.
+
+### 3. Try it
+1. **Two roles:** open a project → Crew → **+ Add** a row, pick the worker, role *Camera*. Add another row, pick the **same worker** — the role switches to their other role (e.g. *Editor*) by itself. Give each its own pay. Save. The worker sees two jobs (one per role) and marks each done separately; you mark each one paid separately.
+2. Giving the **same role twice** to one person is still refused, with a clear message.
+3. **Delete client:** Clients → open a client → **🗑️ Delete client** → confirm. Their projects and invoices are **not** deleted; they keep the name. If you save one of those projects again, or make a new invoice for that name, the client comes back in the directory.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| "The database still allows only one role per worker on a project. Run PART 10…" | You skipped step 1. Run `upgrade2-part10.sql`, then Save again. |
+| "…is listed twice with the same role" | Change the role of one of the two rows. |
+| No Delete client button | Upload `js/pages/clientDirectory.js`, Ctrl+Shift+R. |
+| Client came back after deleting | A project still has that name and was saved again — expected (see step 3.3). |
+
+### What changed (build 18)
+`js/crew.js`, `js/crewForm.js`, `js/pages/clientDirectory.js`, `supabase/worker-setup.sql` (PART 10), `js/version.js`, docs.

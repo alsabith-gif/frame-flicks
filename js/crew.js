@@ -44,6 +44,10 @@ export function suggestPays({ amount, distribution, referral = false, roles }) {
   });
 }
 
+// One person can do several roles on a project (e.g. Camera AND Editor), but not the
+// SAME role twice. A job is therefore identified by worker + role.
+const jobKey = (x) => `${x.worker_id}|${x.role}`;
+
 // rows: [{ worker_id, role, pay }]. Returns an error message, or null if fine.
 export function validateCrew(rows, nameOf = () => 'This worker') {
   const seen = new Set();
@@ -52,8 +56,8 @@ export function validateCrew(rows, nameOf = () => 'This worker') {
     if (!CREW_ROLES.includes(r.role)) return 'Pick a role for every crew row.';
     const pay = r.pay === '' || r.pay === null || r.pay === undefined ? 0 : Number(r.pay);
     if (!Number.isFinite(pay) || pay < 0) return `Enter a valid pay amount for ${nameOf(r.worker_id)}.`;
-    if (seen.has(r.worker_id)) return `${nameOf(r.worker_id)} is listed twice. A worker can have only one role per project.`;
-    seen.add(r.worker_id);
+    if (seen.has(jobKey(r))) return `${nameOf(r.worker_id)} is listed twice with the same role. To give them two roles, pick a different role for the second row.`;
+    seen.add(jobKey(r));
   }
   return null;
 }
@@ -84,16 +88,17 @@ function sameTask(a, b) {
   return Math.round(num(a.pay_amount) * 100) === Math.round(num(b.pay_amount) * 100);
 }
 
-// Works out the smallest set of changes: rows to write, and workers removed.
-// Unchanged rows are left alone, so a worker is only ever told about a real change.
+// Works out the smallest set of changes: rows to write, and jobs removed
+// (toDelete = [{ worker_id, role }]). Unchanged rows are left alone, so a worker
+// is only ever told about a real change.
 export function diffCrew(existing, desired) {
-  const byWorker = new Map(existing.map((e) => [e.worker_id, e]));
+  const byJob = new Map(existing.map((e) => [jobKey(e), e]));
   const toUpsert = desired.filter((d) => {
-    const e = byWorker.get(d.worker_id);
+    const e = byJob.get(jobKey(d));
     return !e || !sameTask(e, d);
   });
-  const keep = new Set(desired.map((d) => d.worker_id));
-  const toDelete = existing.map((e) => e.worker_id).filter((id) => !keep.has(id));
+  const keep = new Set(desired.map(jobKey));
+  const toDelete = existing.filter((e) => !keep.has(jobKey(e))).map((e) => ({ worker_id: e.worker_id, role: e.role }));
   return { toUpsert, toDelete };
 }
 
@@ -138,11 +143,17 @@ export async function paidJobsForProject(projectId) {
 
 export async function saveCrewChanges(projectId, { toUpsert, toDelete }) {
   if (toUpsert.length) {
-    const { error } = await supabase.from('worker_tasks').upsert(toUpsert, { onConflict: 'project_id,worker_id' });
-    if (error) throw friendly(error);
+    const { error } = await supabase.from('worker_tasks').upsert(toUpsert, { onConflict: 'project_id,worker_id,role' });
+    if (error) {
+      // The database still has the old "one job per worker per project" rule: PART 10 has not been run yet.
+      if (/duplicate key|unique/i.test(error.message || '') && /worker_id/i.test(error.message || '')) {
+        throw new Error('The database still allows only one role per worker on a project. Run PART 10 of supabase/worker-setup.sql (SETUP.md → Upgrade 2), then try again.');
+      }
+      throw friendly(error);
+    }
   }
-  if (toDelete.length) {
-    const { error } = await supabase.from('worker_tasks').delete().eq('project_id', projectId).in('worker_id', toDelete);
+  for (const d of toDelete) {
+    const { error } = await supabase.from('worker_tasks').delete().eq('project_id', projectId).eq('worker_id', d.worker_id).eq('role', d.role);
     if (error) throw friendly(error);
   }
 }

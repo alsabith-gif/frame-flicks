@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Upgrade 1 · PDF + layout fixes · build 17 (24 Oct 2026)
+**Current version:** Upgrade 2 · Two roles per worker + Delete client · build 18 (24 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -24,6 +24,9 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 ## Phase 3 (build 11) — done
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
+
+## Upgrade 2 (build 18) — built, waiting for owner's "it works"
+Owner must run `upgrade2-part10.sql` (PART 10) in Supabase before assigning one worker two roles. Files: `js/crew.js`, `js/crewForm.js`, `js/pages/clientDirectory.js`, `supabase/worker-setup.sql` (PART 10). Tests `sql_phase10_tests.sql`, `t21`, `t22`; `sql_phase5_tests.sql` conflict key updated.
 
 ## Upgrade 1 (build 17) — built, waiting for owner's "it works"
 Invoice PDF download (after saving) + layout fixes (Price Distributor overflow, date boxes on iPhone, Profile buttons). Files: `js/pages/invoice.js`, `pages/invoice.html`, `css/components.css`, `css/priceSplit.css`, `css/worker.css`, new `js/vendor/html2canvas.min.js`, `js/vendor/jspdf.umd.min.js`. No SQL. Tests `t20_invoice_pdf.mjs`.

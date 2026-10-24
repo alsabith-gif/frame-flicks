@@ -1150,3 +1150,24 @@ grant execute on function public.submit_feedback(text, text) to authenticated;
 select id, phone from public.crew_contact;
 select column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = 'feedback' order by ordinal_position;
 select proname from pg_proc where proname = 'submit_feedback';
+
+
+-- =====================================================================
+-- PART 10 — one worker, more than one role on the same project   (Upgrade 2: run once, after PART 9)
+-- Before: a worker could have only ONE job per project.
+-- After:  a worker can have one job PER ROLE (e.g. Camera AND Editor on the same project),
+--         but never the same role twice. Nothing existing is changed or deleted.
+-- Safe to run twice.
+-- =====================================================================
+alter table public.worker_tasks drop constraint if exists worker_tasks_project_id_worker_id_key;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.worker_tasks'::regclass and conname = 'worker_tasks_project_worker_role_key') then
+    alter table public.worker_tasks add constraint worker_tasks_project_worker_role_key unique (project_id, worker_id, role);
+  end if;
+end $$;
+
+-- Check: you should see ONE row, with (project_id, worker_id, role)
+select conname, pg_get_constraintdef(oid) as rule
+from pg_constraint
+where conrelid = 'public.worker_tasks'::regclass and contype = 'u';
