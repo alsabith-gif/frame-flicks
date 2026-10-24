@@ -145,6 +145,13 @@
 .wa-kv b { font-weight: 500; text-align: right; word-break: break-all; }
 .wa-error { color: var(--red); font-size: 13px; margin: 8px 0; }
 .wa-error:empty { display: none; }
+/* Forms inside Profile panels: space between fields and above the button (they were touching) */
+.wa-panel form .form-field + .form-field { margin-top: 12px; }
+.wa-panel form .form-field { margin-bottom: 0; }
+.wa-panel form .wa-moods { margin: 12px 0; }
+.wa-panel form .wa-error { margin: 10px 0 0; }
+.wa-panel form button[type="submit"] { display: block; margin-top: 16px; }
+.wa-panel form .form-field input, .wa-panel form .form-field textarea { width: 100%; box-sizing: border-box; }
 .wa-logout { width: 100%; }
 
 /* ---------- Status control (Phase 4) ---------- */

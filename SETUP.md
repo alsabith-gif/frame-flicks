@@ -1039,3 +1039,28 @@ Upload `js/version.js` and `supabase/worker-tests.sql` from **`build16_changed_f
 
 ### What changed (build 16)
 `supabase/worker-tests.sql` (95 → 114 checks), `js/version.js`, docs. Tests: `t11_access.mjs` extended.
+
+
+## Upgrade 1 — invoice PDF download and layout fixes (build 17)
+
+**No SQL. You only upload files.**
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`build17_changed_files_only.zip`**. It has **2 new big files** in `js/vendor/` (`html2canvas.min.js` and `jspdf.umd.min.js`) — make sure they are uploaded into the `js/vendor` folder. Then press **Ctrl+Shift+R** (on the phone: close the app and open it again, or pull to refresh). Settings → About should say **Upgrade 1 · PDF + layout fixes · build 17**.
+
+### 2. Try it
+1. **Invoice PDF:** Invoice Maker → fill the invoice → **💾 Save**. Now **⬇️ Download PDF** turns on. Press it: a PDF file named like `INV00012-Client-Name.pdf` downloads. If you change anything after saving, the button turns off until you Save again (so the PDF is always the saved invoice). Every row in *Saved invoices* also has a **⬇️ PDF** button.
+2. **Price Distributor** now fits the screen (computer and phone).
+3. **Date boxes** in the Invoice Maker no longer overlap on the phone.
+4. **Worker Profile:** there is space above **Save password** and **Send feedback**.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| "Could not make the PDF" | The 2 files in `js/vendor/` are missing. Upload `js/vendor/html2canvas.min.js` and `js/vendor/jspdf.umd.min.js`. |
+| Download PDF is greyed out | Press 💾 Save first (it also turns off after any edit). |
+| Layout still looks old | Upload `css/components.css`, `css/priceSplit.css`, `css/worker.css`, then hard refresh / reopen the app. |
+| PDF looks cut or blurry | Tell me which invoice type and I will fix it. |
+
+### What changed (build 17)
+`js/pages/invoice.js`, `pages/invoice.html`, `css/components.css`, `css/priceSplit.css`, `css/worker.css`, `js/version.js`, docs. New: `js/vendor/html2canvas.min.js`, `js/vendor/jspdf.umd.min.js`.

@@ -217,9 +217,63 @@ function syncProjectFromInvoice() {
   }
   return created;
 }
+// "Clean" = what is on screen is exactly what was saved. Any edit makes it unclean,
+// and the PDF button only works on a clean (saved) invoice, so a PDF is always a saved invoice.
+let clean = false; let loading = false;
+function updatePdfBtn() {
+  const b = $('invPdfBtn'); if (!b) return;
+  b.disabled = !clean;
+  b.title = clean ? 'Download this saved invoice as a PDF' : 'Press Save first — then you can download the PDF';
+  const hint = $('invPdfHint'); if (hint) hint.textContent = clean ? '' : 'Save the invoice first, then download the PDF.';
+}
 function renderPreview() {
   if (!isMo() && !S.groups) renderGroups();
   $('invPreview').innerHTML = invoiceHtml();
+  if (!loading) { clean = false; updatePdfBtn(); }
+}
+
+const loadScript = (src) => new Promise((res, rej) => {
+  if (document.querySelector(`script[data-lib="${src}"]`)) { res(); return; }
+  const t = document.createElement('script'); t.src = src; t.dataset.lib = src; t.onload = () => res(); t.onerror = () => rej(new Error('Could not load ' + src));
+  document.head.appendChild(t);
+});
+
+// Draws the invoice (the same A4 layout as printing) and saves it as a real PDF file.
+async function downloadPdf() {
+  if (!clean) { showToast('Press Save first, then download the PDF'); return; }
+  const btn = $('invPdfBtn'); const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making PDF…';
+  const host = document.createElement('div');
+  try {
+    await Promise.all([loadScript('js/vendor/html2canvas.min.js'), loadScript('js/vendor/jspdf.umd.min.js')]);
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    host.className = 'pd';
+    host.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;background:#fff';
+    host.innerHTML = invoiceHtml();
+    document.body.appendChild(host);
+    const canvas = await window.html2canvas(host, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const W = 210; const H = 297;
+    const imgH = (canvas.height * W) / canvas.width;
+    if (imgH <= H + 0.5) {
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, W, imgH);
+    } else {                                   // long invoice: cut into A4 pages
+      const pageHpx = Math.floor((canvas.width * H) / W);
+      for (let y = 0, page = 0; y < canvas.height; y += pageHpx, page++) {
+        const c = document.createElement('canvas'); c.width = canvas.width; c.height = Math.min(pageHpx, canvas.height - y);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(canvas, 0, y, c.width, c.height, 0, 0, c.width, c.height);
+        if (page) pdf.addPage();
+        pdf.addImage(c.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, W, (c.height * W) / c.width);
+      }
+    }
+    const safe = (x) => String(x || '').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
+    pdf.save(`${safe(S.no) || 'invoice'}${S.client ? '-' + safe(S.client) : ''}.pdf`);
+    showToast('PDF downloaded');
+  } catch (err) {
+    showToast('Could not make the PDF: ' + err.message);
+  } finally {
+    host.remove(); btn.textContent = label; updatePdfBtn();
+  }
 }
 
 // Add-ons you can pick: the usual ones, plus the add-ons set on the chosen package.
@@ -259,14 +313,15 @@ function renderGroups() {
     const g = S.groups[el.closest('.inv-grp').dataset.g];
     if (el.dataset.gf === 'title') g.title = el.value;
     else g.items = el.value.split('\n').map((x) => x.trim()).filter(Boolean);
-    $('invPreview').innerHTML = invoiceHtml();
+    renderPreview();
   }));
   $('invGroups').querySelectorAll('[data-gdel]').forEach((b) => b.addEventListener('click', () => {
     S.groups = groups().filter((_, i) => i !== Number(b.dataset.gdel)); renderGroups(); renderPreview();
   }));
 }
 
-function loadToForm() {
+function loadToForm(isSaved = false) {
+  loading = true;
   [['invClient', 'client'], ['invPhone', 'phone'], ['invEvent', 'event'], ['invLoc', 'location'], ['invEventDate', 'eventDate'], ['invDate', 'date'], ['invDiscount', 'discount'], ['invAdvance', 'advance'], ['invTerms', 'terms']]
     .forEach(([id, k]) => { $(id).value = S[k] || ''; });
   [['invHandle', 'handle'], ['invPkgPrice', 'pkgPrice'], ['invPStart', 'pStart'], ['invPEnd', 'pEnd']].forEach(([id, k]) => { $(id).value = S[k] || ''; });
@@ -275,16 +330,18 @@ function loadToForm() {
   fillSelects();
   $('invFeatures').value = featList().join('\n'); $('invStats').value = statList().join('\n');
   renderLines(); if (!isMo()) renderGroups(); renderPreview();
+  loading = false; clean = isSaved; updatePdfBtn();
 }
 
 function renderSaved() {
   const list = getInvoices();
   $('invSaved').innerHTML = list.length ? list.slice().reverse().map((x) => `
     <div class="inv-saved-row" data-id="${x.id}"><span>${x.type === 'monthly' ? '📅' : x.type === 'weekly' ? '🗓️' : x.type === 'onetime' ? '📦' : '🎬'} ${escHtml(x.no)} · ${escHtml(x.client || '—')}${x.projectId ? ' · 🔗 Project' : ''}</span>
-      <button class="btn btn-ghost btn-sm" data-open>Open</button><button class="btn btn-icon btn-sm" data-rm>🗑️</button></div>`).join('') : '<p class="muted" style="font-size:13px">Nothing saved yet.</p>';
+      <button class="btn btn-ghost btn-sm" data-open>Open</button><button class="btn btn-ghost btn-sm" data-pdf title="Download PDF">⬇️ PDF</button><button class="btn btn-icon btn-sm" data-rm>🗑️</button></div>`).join('') : '<p class="muted" style="font-size:13px">Nothing saved yet.</p>';
   $('invSaved').querySelectorAll('.inv-saved-row').forEach((el) => {
     const id = el.dataset.id;
-    el.querySelector('[data-open]').addEventListener('click', () => { S = { ...fresh(), ...JSON.parse(JSON.stringify(getInvoices().find((x) => x.id === id))) }; loadToForm(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    el.querySelector('[data-open]').addEventListener('click', () => { S = { ...fresh(), ...JSON.parse(JSON.stringify(getInvoices().find((x) => x.id === id))) }; loadToForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    el.querySelector('[data-pdf]').addEventListener('click', () => { S = { ...fresh(), ...JSON.parse(JSON.stringify(getInvoices().find((x) => x.id === id))) }; loadToForm(true); downloadPdf(); });
     el.querySelector('[data-rm]').addEventListener('click', () => { saveInvoices(getInvoices().filter((x) => x.id !== id)); renderSaved(); });
   });
 }
@@ -367,8 +424,9 @@ export function init() {
     const created = syncProjectFromInvoice();
     const list = getInvoices().filter((x) => x.id !== S.id); list.push(JSON.parse(JSON.stringify(S)));
     saveInvoices(list); renderSaved();
-    showToast(renumbered ? `Number was already used — saved as ${S.no}` : created ? 'Invoice saved and project created' : 'Invoice saved and project updated');
-    loadToForm();
+    showToast((renumbered ? `Number was already used — saved as ${S.no}` : created ? 'Invoice saved and project created' : 'Invoice saved and project updated') + ' — you can download the PDF now');
+    loadToForm(true);
   });
   $('invPrintBtn').addEventListener('click', printInvoice);
+  $('invPdfBtn').addEventListener('click', downloadPdf);
 }

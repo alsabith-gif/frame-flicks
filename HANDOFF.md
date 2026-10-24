@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Phase 8 · Security proof extended · build 16 (23 Oct 2026)
+**Current version:** Upgrade 1 · PDF + layout fixes · build 17 (24 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -24,6 +24,9 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 ## Phase 3 (build 11) — done
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
+
+## Upgrade 1 (build 17) — built, waiting for owner's "it works"
+Invoice PDF download (after saving) + layout fixes (Price Distributor overflow, date boxes on iPhone, Profile buttons). Files: `js/pages/invoice.js`, `pages/invoice.html`, `css/components.css`, `css/priceSplit.css`, `css/worker.css`, new `js/vendor/html2canvas.min.js`, `js/vendor/jspdf.umd.min.js`. No SQL. Tests `t20_invoice_pdf.mjs`.
 
 ## Phase 8 (build 16) — built, waiting for owner's result of running the proof
 Owner must run the new `supabase/worker-tests.sql` once (SQL Editor → Run). Expect `ALL 114 CHECKS PASSED`. No SQL changes to the database, no app behaviour change. This was the last phase of the big update; Delete worker stays dropped.

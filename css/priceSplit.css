@@ -1,4 +1,5 @@
-.ps-wrap { max-width: 640px; }
+.ps-wrap { max-width: 640px; width: 100%; box-sizing: border-box; overflow: hidden; }
+.ps-wrap select, .ps-wrap input { max-width: 100%; }
 .ps-row { display: grid; grid-template-columns: 1fr 74px 96px; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
 .ps-row .note { display: block; font-size: 11px; color: var(--muted); }
 .ps-row input { width: 100%; min-width: 0; text-align: right; }

@@ -353,13 +353,14 @@ table.data-table tr:hover td { background: rgba(34,31,26,0.03); }
 /* ---------- Form ---------- */
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));   /* minmax(0,…) stops a wide select / date box from pushing the grid wider than its card */
   gap: 14px;
 }
 .form-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 .form-field.full { grid-column: 1 / -1; }
 .form-field label {
@@ -376,7 +377,21 @@ table.data-table tr:hover td { background: rgba(34,31,26,0.03); }
   border-radius: var(--radius-sm);
   padding: 9px 11px;
   font-size: 13px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
+/* Date boxes: iPhone Safari gives them their own width and an odd height when empty, so they overlapped their neighbours. */
+.form-field input[type="date"], .form-field input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-height: 40px;
+  line-height: 1.3;
+  text-align: left;
+}
+.form-field input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.3em; }
 .form-field textarea { resize: vertical; min-height: 80px; font-family: var(--font-body); }
 .form-actions {
   grid-column: 1 / -1;
@@ -387,7 +402,7 @@ table.data-table tr:hover td { background: rgba(34,31,26,0.03); }
 }
 
 @media (max-width: 560px) {
-  .form-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Modal ---------- */
