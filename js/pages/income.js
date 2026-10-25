@@ -3,7 +3,7 @@
 // visible label changed to "Dashboard" — so nothing else has to be renamed.)
 
 import { getIncome, saveIncome, getContentTypes, getPricing, uid } from '../storage.js';
-import { received, balance, hasPayments, statusFor } from '../money.js';
+import { received, balance, hasPayments, statusFor, addPayment } from '../money.js';
 import { upgradeOldPartials } from '../paymentsUi.js';
 import { showToast } from '../toast.js';
 import { openModal, closeModal, openConfirm } from '../modal.js';
@@ -546,6 +546,7 @@ export function openIncomeModal(id) {
       <div class="form-field"><label>Due Date</label><input type="date" id="iDue" value="${existing?.dueDate || ''}"></div>
       <div class="form-field"><label>Completed Date</label><input type="date" id="iCompleted" value="${existing?.completedDate || ''}"></div>
       <div class="form-field"><label>Amount (₹)</label><input type="number" id="iAmount" value="${existing?.amount || ''}"></div>
+      ${existing ? '' : '<div class="form-field"><label>Received so far (₹, optional)</label><input type="number" id="iReceived" min="0" placeholder="e.g. advance"></div>'}
       <div class="form-field"><label>Status</label>
         <select id="iStatus" ${existing && hasPayments(existing) ? 'disabled title="Worked out from the payments on the project page"' : ''}>
           <option value="Paid" ${existing?.status === 'Paid' ? 'selected' : ''}>Paid</option>
@@ -720,6 +721,9 @@ export function openIncomeModal(id) {
       toastMsg = 'Entry updated';
     } else {
       saved = { id: uid(), trackCode: uid() + uid(), ...data };
+      // Money already received when the project is created becomes its first payment (so Money, Analysis and the status all agree).
+      const got = Math.round(Number(body.querySelector('#iReceived')?.value) || 0);
+      if (got > 0) addPayment(saved, { date: data.date || today, amount: got, note: 'Received at start' }, uid());
       current.push(saved);
       saveIncome(current);
       toastMsg = 'Project added';

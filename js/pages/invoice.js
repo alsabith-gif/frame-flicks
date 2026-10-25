@@ -171,6 +171,15 @@ function invoiceTotals() {
   return { grand: r.grand, advance: r.advance };
 }
 
+// When is the work due? Function: the function date + the delivery speed. One-time package: the
+// package date + its delivery days. Monthly / weekly package: the end of the period.
+function dueDateFromInvoice() {
+  const addD = (d, k) => { if (!d) return ''; const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + k); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; };
+  if (!isMo()) return addD(S.eventDate || S.date, { normal: 2, fast: 1, sameDay: 0 }[S.delivery] ?? 2);
+  if (isOne()) { const k = Number(pkgOf().deliveryDays) || 0; return k ? addD(S.pStart || S.date, k) : ''; }
+  return S.pEnd || '';
+}
+
 // Every saved invoice is also a project on the Dashboard / Projects page.
 // First save creates the project and remembers its id on the invoice
 // (projectId) and the invoice id on the project (invoiceId). Saving the same
@@ -188,10 +197,16 @@ function syncProjectFromInvoice() {
     amount: grand, status, date: S.date, invoiceId: S.id, invoiceNo: S.no,
   };
   if (!isMo() && S.eventDate) fields.shootDate = S.eventDate;
+  // Things the invoice already knows, passed on to the project so the calendar, reminders, Money and Analysis see them.
+  if (S.referral !== undefined) fields.referral = !!S.referral;              // only when you chose it on the invoice
+  if (isMo()) { const pk = pkgOf(); fields.packageId = pk.id; fields.packageName = pk.name; fields.invoiceType = S.type; }
+  else fields.invoiceType = 'function';
 
   const list = getIncome();
   let proj = list.find((x) => x.id === S.projectId) || list.find((x) => x.invoiceId === S.id);
   const created = !proj;
+  const autoDue = dueDateFromInvoice();     // used only while the project has no due date of its own
+  const autoRevisions = isMo() ? Number(pkgOf().revisions) || 0 : 0;
   if (created) {
     const today = new Date().toISOString().slice(0, 10);
     proj = {
@@ -204,6 +219,8 @@ function syncProjectFromInvoice() {
   }
   const seenByCrew = { project: proj.project, client: proj.client, shootDate: proj.shootDate };
   Object.assign(proj, fields);
+  if (autoDue && !proj.dueDate) proj.dueDate = autoDue;                       // never overwrites a date you set
+  if (created && autoRevisions) proj.revisionLimit = autoRevisions;           // the package's included revisions
   applyInvoiceAdvance(proj, advance, S.date);   // the invoice's advance becomes a payment; later payments are kept
   saveIncome(list);
   S.projectId = proj.id;
@@ -327,6 +344,7 @@ function loadToForm(isSaved = false) {
   [['invHandle', 'handle'], ['invPkgPrice', 'pkgPrice'], ['invPStart', 'pStart'], ['invPEnd', 'pEnd']].forEach(([id, k]) => { $(id).value = S[k] || ''; });
   $('invTerms').value = isMo() ? S.mTerms : S.terms;
   $('invForm').dataset.type = S.type; $('invType').value = S.type;
+  $('invReferral').value = S.referral ? 'yes' : 'no';
   fillSelects();
   $('invFeatures').value = featList().join('\n'); $('invStats').value = statList().join('\n');
   renderLines(); if (!isMo()) renderGroups(); renderPreview();
@@ -429,4 +447,5 @@ export function init() {
   });
   $('invPrintBtn').addEventListener('click', printInvoice);
   $('invPdfBtn').addEventListener('click', downloadPdf);
+  $('invReferral').addEventListener('change', () => { S.referral = $('invReferral').value === 'yes'; renderPreview(); });
 }

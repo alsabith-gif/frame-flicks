@@ -85,3 +85,5 @@
 .pd-link { margin: 4px 0; font-size: 13.5px; word-break: break-all; }
 .pd-linkbox { width: 100%; box-sizing: border-box; }
 .pd-note { white-space: pre-wrap; font-size: 13.5px; }
+
+.pd-total { border-top: 2px solid var(--border2); margin-top: 4px; padding-top: 8px; font-weight: 600; }

@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Upgrade 2 · Two roles per worker + Delete client · build 18 (24 Oct 2026)
+**Current version:** Connect 1 · Money engine + links · build 19 (25 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -24,6 +24,13 @@ admin Settings contact box, admin Feedback page. Security proof now 95 checks. M
 ## Phase 3 (build 11) — done
 Worker detail page inside `js/pages/workers.js` (state `detailId`; `#wkDetail` in `pages/workers.html`). No SQL.
 Also removed the long anonymity warning paragraph from the worker feedback screen (owner's request).
+
+## "Connect everything" plan (owner approved 25 Oct 2026) — parts A–D
+Owner's decisions: (1) profit counts the Price Distributor percentages for Travel/Subscriptions ("simple"), real typed expenses are shown separately and NOT subtracted again; (2) crew pay counts when ASSIGNED (paid / still owed shown separately); (3) referral = 5% only when a project is marked as a referral; (4) no preview of the worker Home redesign, just build it.
+- **A (build 19) — built, waiting for "it works":** `js/finance.js` + links (see APP-NOTES change log).
+- **B — Money page in detail:** received → crew (paid/owed) → referral → set-asides → profit; per-project and per-client tables; still to receive / still to pay crew; compare set-asides vs real expenses.
+- **C — Analysis:** per-client split of every rupee, charts: top clients, most profitable clients, business profit by month, crew earnings (use `summarize`, `crewEarnings`).
+- **D — Worker Home:** one big "Your next job" card, a short "this week" list, one line "Owed to you ₹X"; remove the 3 counters and repeated sections.
 
 ## Upgrade 2 (build 18) — built, waiting for owner's "it works"
 Owner must run `upgrade2-part10.sql` (PART 10) in Supabase before assigning one worker two roles. Files: `js/crew.js`, `js/crewForm.js`, `js/pages/clientDirectory.js`, `supabase/worker-setup.sql` (PART 10). Tests `sql_phase10_tests.sql`, `t21`, `t22`; `sql_phase5_tests.sql` conflict key updated.

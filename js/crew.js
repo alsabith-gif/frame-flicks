@@ -128,6 +128,13 @@ export async function loadWorkers() {
   return data || [];
 }
 
+// Every crew job of every project (admin only) — for the money pages.
+export async function loadAllCrewTasks() {
+  const { data, error } = await supabase.from('worker_tasks').select('project_id, worker_id, role, pay_amount, pay_status, status');
+  if (error) throw friendly(error);
+  return data || [];
+}
+
 export async function loadCrewForProject(projectId) {
   const { data, error } = await supabase.from('worker_tasks').select('*').eq('project_id', projectId);
   if (error) throw friendly(error);

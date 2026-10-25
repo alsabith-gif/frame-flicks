@@ -1,7 +1,7 @@
 // pages/clientAnalysis.js — project & payment analytics computed from
 // Income entries. All local, no AI call needed.
 
-import { received } from '../money.js';
+import { received, balance, paymentRows } from '../money.js';
 import { getIncome, getClients } from '../storage.js';
 import { escHtml, formatDate, currency, daysBetween } from '../format.js';
 
@@ -38,7 +38,7 @@ export function init() {
 
   /* ---------- Top KPIs ---------- */
   const active = all.filter(isActive).length;
-  const owed = all.filter((e) => e.status === 'Pending' || e.status === 'Partial').reduce((s, e) => s + Number(e.amount || 0), 0);
+  const owed = all.reduce((s, e) => s + balance(e), 0);
   const overdueCount = all.filter(isOverdue).length;
 
   const turnaroundDays = all
@@ -60,10 +60,11 @@ export function init() {
   const lastKey = monthKey(lastMonthDate.toISOString().slice(0, 10));
 
   const paidByMonth = {};
-  all.forEach((e) => {
-    const k = monthKey(e.date);
+  // Money is counted in the month it was RECEIVED (the same way as the Money page).
+  paymentRows(all).forEach((r) => {
+    const k = monthKey(r.date);
     if (!k) return;
-    paidByMonth[k] = (paidByMonth[k] || 0) + received(e);
+    paidByMonth[k] = (paidByMonth[k] || 0) + r.amount;
   });
   const curAmt = paidByMonth[curKey] || 0;
   const lastAmt = paidByMonth[lastKey] || 0;
@@ -90,8 +91,8 @@ export function init() {
 
   /* ---------- Who owes you ---------- */
   const owedByClient = {};
-  all.filter((e) => e.status === 'Pending' || e.status === 'Partial').forEach((e) => {
-    owedByClient[e.client] = (owedByClient[e.client] || 0) + Number(e.amount || 0);
+  all.filter((e) => balance(e) > 0).forEach((e) => {
+    owedByClient[e.client] = (owedByClient[e.client] || 0) + balance(e);
   });
   const owedList = Object.entries(owedByClient).sort((a, b) => b[1] - a[1]);
   document.getElementById('caWhoOwes').innerHTML = owedList.length
@@ -133,7 +134,7 @@ export function init() {
 
   /* ---------- Year to date ---------- */
   const ytdEntries = all.filter((e) => e.date && new Date(e.date).getFullYear() === thisYear);
-  const ytdEarned = ytdEntries.reduce((s, e) => s + received(e), 0);
+  const ytdEarned = paymentRows(all).filter((r) => r.date && new Date(r.date).getFullYear() === thisYear).reduce((s, r) => s + r.amount, 0);
   const ytdProjects = ytdEntries.length;
   const firstProjectYear = {};
   all.forEach((e) => {

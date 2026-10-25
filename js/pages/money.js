@@ -12,6 +12,8 @@ const $ = (id) => document.getElementById(id);
 const today = () => new Date().toISOString().slice(0, 10);
 const monthLabel = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
+const projectName = (id) => { const p = getIncome().find((x) => x.id === id); return p ? `${p.client || '—'} — ${p.project || ''}` : ''; };
+
 function render() {
   const projects = getIncome(); const expenses = getExpenses();
   const months = monthsWithData(projects, expenses);
@@ -23,7 +25,7 @@ function render() {
   ].map(([l, v, c]) => `<div class="mn-kpi ${c}"><span>${escHtml(l)}</span><b>${s.left < 0 && l === 'Left' ? '− ' : ''}${escHtml(currency(Math.abs(v)))}</b></div>`).join('');
 
   $('mnExpenses').innerHTML = s.expenseRows.length
-    ? s.expenseRows.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map((e) => `<div class="mn-row"><div class="mn-main">${escHtml(e.category || 'Other')}${e.note ? ` · ${escHtml(e.note)}` : ''}<small>${e.date ? escHtml(formatDate(e.date)) : '—'}</small></div><b>${escHtml(currency(e.amount))}</b><button type="button" class="btn btn-icon btn-sm" data-exdel="${escHtml(e.id)}" title="Delete">🗑️</button></div>`).join('')
+    ? s.expenseRows.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map((e) => `<div class="mn-row"><div class="mn-main">${escHtml(e.category || 'Other')}${e.note ? ` · ${escHtml(e.note)}` : ''}<small>${e.date ? escHtml(formatDate(e.date)) : '—'}${e.projectId && projectName(e.projectId) ? ` · ${escHtml(projectName(e.projectId))}` : ''}</small></div><b>${escHtml(currency(e.amount))}</b><button type="button" class="btn btn-icon btn-sm" data-exdel="${escHtml(e.id)}" title="Delete">🗑️</button></div>`).join('')
     : '<p class="muted">No expenses for this period.</p>';
   $('mnExpenses').querySelectorAll('[data-exdel]').forEach((b) => b.addEventListener('click', () => {
     openConfirm('Delete this expense?', () => { saveExpenses(getExpenses().filter((x) => x.id !== b.dataset.exdel)); showToast('Expense deleted'); render(); });
@@ -45,13 +47,14 @@ export function init() {
   upgradeOldPartials();
   $('exCat').innerHTML = EXPENSE_CATEGORIES.map((c) => `<option>${escHtml(c)}</option>`).join('');
   $('exDate').value = today();
+  $('exProject').innerHTML = '<option value="">— not for one project —</option>' + getIncome().slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map((p) => `<option value="${escHtml(p.id)}">${escHtml(p.client || '—')} — ${escHtml(p.project || '')}</option>`).join('');
   $('mnMonth').addEventListener('change', (e) => { month = e.target.value; render(); });
   $('exAdd').addEventListener('click', () => {
     const amt = Math.round(Number($('exAmt').value) || 0);
     if (amt <= 0) { $('exMsg').textContent = 'Enter an amount above 0.'; return; }
     $('exMsg').textContent = '';
     const list = getExpenses();
-    list.push({ id: uid(), date: $('exDate').value || today(), amount: amt, category: $('exCat').value, note: $('exNote').value.trim().slice(0, 120) });
+    list.push({ id: uid(), date: $('exDate').value || today(), amount: amt, category: $('exCat').value, note: $('exNote').value.trim().slice(0, 120), projectId: $('exProject').value || '' });
     saveExpenses(list);
     $('exAmt').value = ''; $('exNote').value = '';
     showToast('Expense added'); render();

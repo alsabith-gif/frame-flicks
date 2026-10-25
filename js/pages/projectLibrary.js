@@ -9,7 +9,7 @@ import {
   escHtml, formatDate, currency, STAGE_CLASS, PROJECT_PRIORITIES, PROJECT_PRIORITY_CLASS,
   getProjectStages, SERVICE_OPTIONS, isServiceTicked,
 } from '../format.js';
-import { splitPrice } from '../pricing.js';
+import { projectFinance } from '../finance.js';
 import { loadWorkers, loadCrewForProject } from '../crew.js';
 import { trackLinkFor, openLinkShareModal } from '../tracklink.js';
 import { ROLE_LABEL, roleMainDate } from '../roles.js';
@@ -150,12 +150,21 @@ function invoicesHtml(p) {
     + '<p class="muted">Open the Invoice Maker (menu) to view or print it.</p>';
 }
 
-function splitHtml(p, shootPeople) {
-  const amount = Number(p.amount || 0);
-  if (!amount) return '<p class="muted">Add a project amount to see the split.</p>';
-  const dist = getPricing().distribution;
-  const r = splitPrice(amount, dist, { referral: !!p.referral, crew: shootPeople || 1 });
-  return r.rows.map((x) => row(`${x.label}${x.unused ? ' (not used — no referral)' : ''}`, escHtml(currency(x.amount)))).join('');
+// "Where the money goes" — the shared maths in finance.js. crewRows = this project's crew jobs
+// (null while they are still loading; a project without crew simply has no crew cost).
+function splitHtml(p, crewRows, nameOf = () => 'Crew') {
+  if (!Number(p.amount || 0)) return '<p class="muted">Add a project amount to see where the money goes.</p>';
+  const f = projectFinance(p, crewRows || [], getPricing().distribution);
+  const neg = (n) => `− ${escHtml(currency(n))}`;
+  let h = row('Project price', escHtml(currency(f.price)));
+  if (f.hasCrew) h += f.crew.map((c) => row(`Crew — ${escHtml(nameOf(c.worker_id))} (${escHtml(ROLE_LABEL[c.role] || c.role)})${c.paid ? ' · paid' : ''}`, neg(c.pay))).join('');
+  else h += row('Crew', '<span class="muted">none assigned</span>');
+  if (p.referral) h += row('Referral commission', neg(f.referral));
+  h += f.setAsides.filter((x) => x.amount).map((x) => row(escHtml(x.label), neg(x.amount))).join('');
+  h += `<div class="pd-kv pd-total"><span>Left for the business</span><b>${escHtml(currency(f.profit))}${f.price ? ` <span class="muted">(${f.margin}%)</span>` : ''}</b></div>`;
+  h += row('Received so far', escHtml(currency(f.received)));
+  if (f.hasCrew) h += row('Crew paid out so far', `${escHtml(currency(f.crewPaid))} of ${escHtml(currency(f.crewAssigned))}`);
+  return h;
 }
 
 function linksHtml(p) {
@@ -188,10 +197,9 @@ async function fillCrew(projectId) {
       ${first.location ? row('Location', escHtml(first.location)) : ''}
       ${first.shoot_time ? row('Shoot time', escHtml(String(first.shoot_time).slice(0, 5))) : ''}
       ${first.notes ? row('Notes for the crew', escHtml(first.notes)) : ''}`;
-    const people = rows.filter((t) => roleMainDate(t.role) === 'shoot').length;
     const splitBox = document.getElementById('plSplitBody');
     const p = getIncome().find((x) => x.id === projectId);
-    if (splitBox && p) splitBox.innerHTML = splitHtml(p, people);
+    if (splitBox && p) splitBox.innerHTML = splitHtml(p, rows, name);
   } catch (err) {
     box.innerHTML = `<p class="muted">Could not load the crew (${escHtml(err.message || 'error')}).</p>`;
   }
@@ -238,7 +246,7 @@ function renderDetail() {
       ${secHtml('Payments', paymentsHtml(p))}
       ${secHtml('Invoice', invoicesHtml(p))}
       ${secHtml('Crew', '<p class="muted">Loading the crew…</p>', 'plCrew').replace('</section>', '').replace('<p class="muted">Loading the crew…</p>', '<div id="plCrewBody"><p class="muted">Loading the crew…</p></div></section>')}
-      ${secHtml('Price split', `<div id="plSplitBody">${splitHtml(p, 1)}</div><p class="muted">Using the percentages in the Price Distributor.</p>`)}
+      ${secHtml('Where the money goes', `<div id="plSplitBody">${splitHtml(p, null)}</div><p class="muted">Crew pay is what you assigned. Referral, travel and subscriptions use the percentages in the Price Distributor.</p>`)}
       ${secHtml('Links', linksHtml(p))}
       ${secHtml('Notes', `${p.notes ? `<div class="pd-note">${escHtml(p.notes)}</div>` : '<p class="muted">No private notes.</p>'}
         ${p.clientNote ? `<h3 class="pd-h3">Note shown to the client</h3><div class="pd-note">${escHtml(p.clientNote)}</div>` : ''}`)}

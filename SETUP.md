@@ -1093,3 +1093,29 @@ Upload the files from **`build18_changed_files_only.zip`**, then Ctrl+Shift+R. S
 
 ### What changed (build 18)
 `js/crew.js`, `js/crewForm.js`, `js/pages/clientDirectory.js`, `supabase/worker-setup.sql` (PART 10), `js/version.js`, docs.
+
+
+## Connect 1 — one money calculation, and invoice → project links (build 19)
+
+**No SQL. You only upload files.**
+
+### 1. Upload the new app files (GitHub, same as before)
+Upload the files from **`build19_changed_files_only.zip`** (it has 1 new file, `js/finance.js`), then Ctrl+Shift+R. Settings → About should say **Connect 1 · Money engine + links · build 19**.
+
+### 2. Try it
+1. **Projects → click a project → "Where the money goes":** price, each crew person's pay (as assigned), referral (only if the project is from a referral), travel and subscriptions (the Price Distributor percentages), and **what is left for the business**, plus received so far and crew paid out.
+2. **Invoice Maker:** there is a new **Client came via referral?** box. When you save, the project now also gets a **due date** (function: function date + delivery speed; one-time package: package date + its delivery days; monthly/weekly: end of the period), the package's **included revisions**, and which package it came from. A due date you typed on the project is never overwritten.
+3. **New project (Dashboard → + Add Project):** the new box **Received so far (₹)** becomes the project's first payment, so Money, Analysis and the status all agree.
+4. **Money page → Add an expense:** you can now pick which project it was for (optional).
+5. **Analysis:** money is counted in the month you *received* it (same as the Money page), and "owed" counts only what is still unpaid.
+
+### If something goes wrong
+| You see | Do this |
+|---|---|
+| "Where the money goes" missing | Upload `js/pages/projectLibrary.js` and `js/finance.js`. |
+| No "Client came via referral?" in Invoice Maker | Upload `pages/invoice.html` and `js/pages/invoice.js`. |
+| No "Received so far" in a new project | Upload `js/pages/income.js`. |
+| Crew lines say "Could not load the crew" | Check your internet; the rest of the page still works. |
+
+### What changed (build 19)
+New: `js/finance.js`. Changed: `js/crew.js`, `js/pages/projectLibrary.js`, `css/projectLibrary.css`, `js/pages/invoice.js`, `pages/invoice.html`, `js/pages/income.js`, `js/pages/money.js`, `pages/money.html`, `js/pages/clientAnalysis.js`, `js/version.js`, docs. Next: Part B (Money page in detail).
