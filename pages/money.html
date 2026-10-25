@@ -1,7 +1,30 @@
 <section class="money-page">
   <p class="mn-intro">Money in (payments you recorded), your own expenses, and what is left. Crew pay is not counted here.</p>
   <div class="mn-toolbar"><label for="mnMonth">Show</label><select id="mnMonth"></select></div>
-  <div class="mn-kpis" id="mnKpis"></div>
+  <div id="mnBanner" class="mn-banner" style="display:none"></div>
+
+  <div class="card mn-sec">
+    <h2 class="pd-h2">Cash — money that actually moved</h2>
+    <p class="muted mn-note">Money received on the day it came in, crew pay on the day you marked it paid, and the expenses you typed.</p>
+    <div class="mn-kpis" id="mnKpis"></div>
+  </div>
+
+  <div class="card mn-sec">
+    <h2 class="pd-h2">Where the money goes</h2>
+    <p class="muted mn-note" id="mnFlowNote">Projects started in the chosen period, on their full price.</p>
+    <div id="mnFlow"></div>
+  </div>
+
+  <div class="card mn-sec">
+    <h2 class="pd-h2">Clients and projects</h2>
+    <p class="muted mn-note">For each project: price, crew pay (as assigned), referral, travel + subscriptions set aside, what is left, and what the client has paid.</p>
+    <div id="mnClients"></div>
+  </div>
+
+  <div class="card mn-sec">
+    <h2 class="pd-h2">Crew pay</h2>
+    <div id="mnCrew"></div>
+  </div>
 
   <div class="card mn-sec">
     <h2 class="pd-h2">Add an expense</h2>

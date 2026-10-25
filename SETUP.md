@@ -1119,3 +1119,16 @@ Upload the files from **`build19_changed_files_only.zip`** (it has 1 new file, `
 
 ### What changed (build 19)
 New: `js/finance.js`. Changed: `js/crew.js`, `js/pages/projectLibrary.js`, `css/projectLibrary.css`, `js/pages/invoice.js`, `pages/invoice.html`, `js/pages/income.js`, `js/pages/money.js`, `pages/money.html`, `js/pages/clientAnalysis.js`, `js/version.js`, docs. Next: Part B (Money page in detail).
+
+## Connect 2 — the detailed Money page (build 20)
+
+Upload the files from **`build20_changed_files_only.zip`**, then Ctrl+Shift+R. Settings → About should say **Connect 2 · Money page in detail · build 20**. No SQL this time.
+
+Open **Money**. You should see: Cash (money that moved), Where the money goes, Clients and projects, Crew pay, then your expenses and payments as before.
+
+| If you see | It means / do this |
+|---|---|
+| A red box "Crew pay could not be loaded" | The crew list could not be read (offline?). Press Refresh; cash and profit leave crew pay out until it loads. |
+| "Paid to crew ₹0" but you paid someone | Pay is counted on the day you marked it paid. Check the month picker. |
+| Profit shows a minus | Crew pay + set-asides are higher than the project price. Check the crew pay on that project. |
+| "no crew assigned" on a project | That project has no crew rows, so its profit ignores crew cost. |

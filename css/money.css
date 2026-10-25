@@ -13,3 +13,20 @@
 .mn-row .mn-main, .pay-row > span { flex: 1; min-width: 0; word-break: break-word; }
 .mn-row small { display: block; color: var(--muted); font-size: 12px; }
 .pay-list { margin-top: 6px; }
+.mn-note { font-size: 12.5px; margin: 0 0 10px; }
+.mn-banner { background: rgba(192,57,43,.12); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
+.mn-bar { display: flex; height: 22px; border-radius: 8px; overflow: hidden; background: var(--border); margin: 6px 0 12px; }
+.mn-bar span { display: block; height: 100%; }
+.mn-c-crew { background: #5b7fa6; } .mn-c-ref { background: #9b72b0; } .mn-c-aside { background: #d9a441; } .mn-c-profit { background: #4f9a6a; }
+.mn-flow-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.mn-flow-row i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; }
+.mn-flow-row small { color: var(--muted); margin-left: 6px; }
+.mn-flow-row.total { border-top: 2px solid var(--border2); border-bottom: none; font-weight: 600; }
+.mn-grp { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+.mn-grp-h { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; background: var(--surface2); font-weight: 600; font-size: 13.5px; flex-wrap: wrap; }
+.mn-proj { padding: 8px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+.mn-proj-name { font-weight: 500; margin-bottom: 4px; word-break: break-word; }
+.mn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 4px 12px; }
+.mn-grid span { display: block; color: var(--muted); font-size: 11.5px; }
+.mn-grid b { font-weight: 500; }
+.mn-grid .neg b { color: #c0392b; }

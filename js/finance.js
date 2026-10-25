@@ -80,3 +80,12 @@ export function crewEarnings(tasks = []) {
   }
   return Object.values(m).map((e) => ({ ...e, owed: e.assigned - e.paid })).sort((a, b) => b.assigned - a.assigned);
 }
+
+// Crew pay actually paid out, optionally only in one month ('YYYY-MM', by the "paid on" date).
+export function crewPaidIn(tasks = [], month = '') {
+  return tasks
+    .filter((t) => t.pay_status === 'paid' && (!month || String(t.paid_on || '').slice(0, 7) === month))
+    .reduce((s, t) => s + rupee(t.pay_amount), 0);
+}
+// Crew pay still to pay out (assigned but not marked paid), all time.
+export const crewStillOwed = (tasks = []) => tasks.filter((t) => t.pay_status !== 'paid').reduce((s, t) => s + rupee(t.pay_amount), 0);
