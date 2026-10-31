@@ -1145,3 +1145,16 @@ Open **Analysis**. At the top is a new card with a period picker (All time or on
 | A client with profit in minus | Crew pay + travel/subscriptions is higher than what they were billed. Check the crew pay on their project. |
 | "Crew pay is not available right now" | Same as above, for the crew card. |
 | The table is wider than the phone | Swipe it sideways; the client name stays in place. |
+
+## Connect 4 — the simpler worker Home (build 22)
+
+Upload the files from **`build22_changed_files_only.zip`**, then Ctrl+Shift+R (workers: close and reopen the app). Settings → About should say **Connect 4 · Simple worker Home · build 22**. No SQL.
+
+Open the worker app. Home now shows: one big **Your next job** card with an **Open** button, a short **This week** list, and one line **Owed to you**.
+
+| If you see | It means / do this |
+|---|---|
+| "You are all caught up" | The worker has no open jobs right now. |
+| Red "Overdue" label | That job's date has passed and it is not Done yet. |
+| "Owed to you" missing | Nothing is owed: either no finished jobs or all are paid. |
+| Open does not highlight the job | The job is in the Done list; open My Work and look there. |

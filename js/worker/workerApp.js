@@ -184,7 +184,15 @@ function wireOnce() {
   $('waRefresh').addEventListener('click', () => refresh());
   $('waMain').addEventListener('click', (e) => {
     const goBtn = e.target.closest('[data-go]');
-    if (goBtn) { go(goBtn.dataset.go); return; }
+    if (goBtn) {
+      go(goBtn.dataset.go);
+      const id = goBtn.dataset.job;   // "Open" on Home: jump to that job and flash it
+      if (id) {
+        const card = Array.from($('waMain').querySelectorAll('.wa-card')).find((c) => c.dataset.id === id);
+        if (card) { card.classList.add('wa-flash'); if (card.scrollIntoView) card.scrollIntoView({ block: 'center' }); setTimeout(() => card.classList.remove('wa-flash'), 2500); }
+      }
+      return;
+    }
     const b = e.target.closest('[data-set-status]');
     if (!b || b.disabled) return;
     const card = b.closest('.wa-card');

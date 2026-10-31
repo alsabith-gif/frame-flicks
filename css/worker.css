@@ -316,3 +316,22 @@
 .wa-mood { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: inherit; font-size: 14px; cursor: pointer; }
 .wa-mood.is-on { background: var(--accent-dim, rgba(127,127,127,.2)); border-color: var(--accent, currentColor); font-weight: 600; }
 #waFbText { width: 100%; box-sizing: border-box; }
+
+/* Home (build 22): one big next-job card, short week list, one owed line */
+.wa-next-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wa-next-top .wa-h2 { margin: 0; }
+.wa-next-title { font-size: 20px; margin-top: 8px; }
+.wa-next-btn { width: 100%; margin-top: 14px; padding: 14px; font-size: 16px; }
+.wa-caught { font-size: 18px; font-weight: 600; margin: 8px 0 2px; }
+.wa-tag { flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--surface-2, rgba(127,127,127,.12)); color: var(--muted); white-space: nowrap; }
+.wa-tag.is-today { background: rgba(79,154,106,.18); color: #4f9a6a; }
+.wa-tag.is-late { background: rgba(192,57,43,.14); color: var(--red, #c0392b); }
+.wa-week-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; color: inherit; font: inherit; cursor: pointer; }
+.wa-week-row:first-of-type { border-top: 0; }
+.wa-week-main { flex: 1; min-width: 0; display: block; }
+.wa-week-title { display: block; font-weight: 500; word-break: break-word; }
+.wa-week-sub { display: block; font-size: 12.5px; color: var(--muted); }
+.wa-owed { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2, rgba(127,127,127,.08)); color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.wa-owed b { font-size: 18px; }
+.wa-owed-go { margin-left: auto; color: var(--muted); font-size: 13px; }
+.wa-flash { outline: 2px solid var(--accent, #d9a441); transition: outline-color .3s; }

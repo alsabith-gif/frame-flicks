@@ -1,23 +1,46 @@
-// worker/workerHome.js — the "Home" tab: a quick look at today. Greeting is in the
-// header; here: today's jobs, the next shoot, what is still to finish, and the
-// worker's OWN earnings snapshot. Read-only (status is changed on the Works tab).
+// worker/workerHome.js — the "Home" tab, kept simple: ONE big "Your next job" card with an
+// Open button, a short "This week" list, and one line "Owed to you ₹X". Read-only (status is changed on the Works tab).
 // Only this worker's own jobs are ever here (the database guarantees it).
 
 import { escHtml } from '../format.js';
 import { groupTasks, fmtDay, fmtTime, relDay, dayDiff, ROLE_LABEL } from './workerView.js';
 import { summarizeEarnings, money } from './earningsCalc.js';
 
-function miniJob(t, today) {
+// Small label for a job's day: Overdue / Today / Tomorrow / a date.
+function dayLabel(t, today) {
+  const key = t.shoot_date || t.due_date;
+  if (!key) return { text: 'No date', cls: '' };
+  if (t.shoot_date === today || t.due_date === today) return { text: 'Today', cls: 'is-today' };
+  if (key < today) return { text: 'Overdue', cls: 'is-late' };
+  return { text: relDay(key, today), cls: '' };
+}
+
+// The ONE job to look at first: today's (earliest first), else the oldest overdue, else the next coming up.
+export function pickNextJob(tasks, today) {
+  const g = groupTasks(tasks || [], today);
+  return g.today[0] || g.overdue[0] || g.upcoming[0] || null;
+}
+
+function bigJob(t, today) {
   const when = [t.shoot_date ? fmtDay(t.shoot_date) : '', t.shoot_time ? fmtTime(t.shoot_time) : ''].filter(Boolean).join(' · ');
+  const lab = dayLabel(t, today);
   return `
-    <div class="wa-home-job">
-      <div class="wa-home-job-main">
-        <div class="wa-title">${escHtml(t.title)}</div>
-        <div class="wa-client">${escHtml([t.client_name, ROLE_LABEL[t.role] || t.role].filter(Boolean).join(' · '))}</div>
-        ${t.location ? `<div class="wa-line"><span class="wa-ico">📍</span><span>${escHtml(t.location)}</span></div>` : ''}
-        ${when ? `<div class="wa-line"><span class="wa-ico">🎬</span><span>${escHtml(when)} <span class="wa-rel">(${escHtml(relDay(t.shoot_date || today, today))})</span></span></div>` : ''}
-      </div>
-    </div>`;
+    <section class="wa-panel wa-next">
+      <div class="wa-next-top"><h2 class="wa-h2">Your next job</h2><span class="wa-tag ${lab.cls}">${escHtml(lab.text)}</span></div>
+      <div class="wa-title wa-next-title">${escHtml(t.title)}</div>
+      <div class="wa-client">${escHtml([t.client_name, ROLE_LABEL[t.role] || t.role].filter(Boolean).join(' · '))}</div>
+      ${t.location ? `<div class="wa-line"><span class="wa-ico">📍</span><span>${escHtml(t.location)}</span></div>` : ''}
+      ${when ? `<div class="wa-line"><span class="wa-ico">🎬</span><span>${escHtml(when)}</span></div>` : ''}
+      <button type="button" class="btn btn-primary wa-next-btn" data-go="work" data-job="${escHtml(t.id)}">Open</button>
+    </section>`;
+}
+
+function weekRow(t, today) {
+  const lab = dayLabel(t, today);
+  return `<button type="button" class="wa-week-row" data-go="work" data-job="${escHtml(t.id)}">
+      <span class="wa-week-main"><span class="wa-week-title">${escHtml(t.title)}</span><span class="wa-week-sub">${escHtml([t.client_name, ROLE_LABEL[t.role] || t.role].filter(Boolean).join(' · '))}</span></span>
+      <span class="wa-tag ${lab.cls}">${escHtml(lab.text)}</span>
+    </button>`;
 }
 
 // The soonest open job whose shoot day is after today (today's jobs are listed above it).
@@ -37,43 +60,29 @@ export function renderWorkerHome(root, state, profile) {
   if (!tasks && loading) { root.innerHTML = '<div class="wa-empty"><p class="muted">Loading…</p></div>'; return; }
 
   const all = tasks || [];
-  const g = groupTasks(all, today);
-  const open = g.overdue.length + g.today.length + g.upcoming.length;
-  const next = nextShoot(all, today);
+  const next = pickNextJob(all, today);
   const e = summarizeEarnings(all);
   let html = offline ? '<div class="wa-banner">You are offline — showing your last saved jobs.</div>' : '';
 
-  html += `<section class="wa-panel wa-home-stats">
-      <div class="wa-stat"><b>${g.today.length}</b><span>Today</span></div>
-      <div class="wa-stat${g.overdue.length ? ' is-late' : ''}"><b>${g.overdue.length}</b><span>Overdue</span></div>
-      <div class="wa-stat"><b>${open}</b><span>To finish</span></div>
-    </section>`;
+  html += next
+    ? bigJob(next, today)
+    : `<section class="wa-panel wa-next"><h2 class="wa-h2">Your next job</h2><p class="wa-caught">You are all caught up 🎉</p><p class="muted">New jobs show up here by themselves.</p></section>`;
 
-  html += `<section class="wa-panel"><h2 class="wa-h2">Today's jobs <span class="wa-count">${g.today.length}</span></h2>
-      ${g.today.length ? g.today.map((t) => miniJob(t, today)).join('') : '<p class="muted">Nothing scheduled for today.</p>'}
-    </section>`;
-
-  html += `<section class="wa-panel"><h2 class="wa-h2">Next shoot</h2>
-      ${next ? miniJob(next, today) : '<p class="muted">No upcoming shoot.</p>'}
-    </section>`;
-
-  if (g.overdue.length) {
-    html += `<section class="wa-panel wa-sec-overdue"><h2 class="wa-h2">Still to finish — overdue <span class="wa-count">${g.overdue.length}</span></h2>
-      ${g.overdue.map((t) => miniJob(t, today)).join('')}
+  // This week: other open jobs that are overdue or fall in the next 7 days (max 5).
+  const week = all
+    .filter((t) => t.status !== 'done' && (!next || t.id !== next.id))
+    .filter((t) => { const key = t.shoot_date || t.due_date; return key && dayDiff(key, today) <= 7; })
+    .sort((a, b) => String(a.shoot_date || a.due_date).localeCompare(String(b.shoot_date || b.due_date)));
+  if (week.length) {
+    html += `<section class="wa-panel"><h2 class="wa-h2">This week</h2>
+      ${week.slice(0, 5).map((t) => weekRow(t, today)).join('')}
+      ${week.length > 5 ? `<p><button type="button" class="btn btn-ghost btn-sm" data-go="work">See all my jobs (${week.length})</button></p>` : ''}
     </section>`;
   }
 
-  html += `<section class="wa-panel"><h2 class="wa-h2">My earnings</h2>
-      ${e.done
-    ? `<div class="wa-earn">
-          <span class="wa-pill">Earned <b>${escHtml(money(e.earned))}</b></span>
-          <span class="wa-pill">Paid <b>${escHtml(money(e.paid))}</b></span>
-          <span class="wa-pill">Still owed <b>${escHtml(money(e.owed))}</b></span>
-        </div>`
-    : '<p class="muted">No finished jobs yet.</p>'}
-      <p><button type="button" class="btn btn-ghost btn-sm" data-go="earnings">See earnings</button>
-         <button type="button" class="btn btn-ghost btn-sm" data-go="work">Open my jobs</button></p>
-    </section>`;
+  html += `<button type="button" class="wa-owed" data-go="earnings">
+      <span>${e.owed > 0 ? 'Owed to you' : 'Nothing owed to you'}</span>${e.owed > 0 ? `<b>${escHtml(money(e.owed))}</b>` : ''}<span class="wa-owed-go">Earnings ›</span>
+    </button>`;
 
   root.innerHTML = html;
 }

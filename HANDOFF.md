@@ -1,6 +1,6 @@
 # HANDOFF — where the big update stands (read with APP-NOTES.md)
 
-**Current version:** Connect 3 · Analysis profit + splits · build 21 (25 Oct 2026)
+**Current version:** Connect 4 · Simple worker Home · build 22 (25 Oct 2026)
 
 ## Done
 - Worker system complete and security-proofed (status, earnings/pay, notifications, `worker-tests.sql`).
@@ -67,4 +67,4 @@ Check `t3`/`t7`/`t9` and add a test that the form still offers the saved types. 
 
 
 ## Connect plan progress
-A (build 19) done · B Money page (build 20) done · C Analysis page (build 21) delivered, waiting for "it works" · D Worker Home after.
+A (build 19) done · B Money page (build 20) done · C Analysis page (build 21) done · D Worker Home (build 22) delivered, waiting for "it works" — then the Connect plan is complete · D Worker Home after.
