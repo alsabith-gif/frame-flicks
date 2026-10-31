@@ -2,7 +2,9 @@
 // Income entries. All local, no AI call needed.
 
 import { received, balance, paymentRows } from '../money.js';
-import { getIncome, getClients } from '../storage.js';
+import { getIncome, getClients, getPricing } from '../storage.js';
+import { summarize, crewEarnings } from '../finance.js';
+import { loadAllCrewTasks, loadWorkers } from '../crew.js';
 import { escHtml, formatDate, currency, daysBetween } from '../format.js';
 
 function barHtml(label, value, max, color) {
@@ -31,7 +33,85 @@ function isActive(e) {
   return (e.stage || 'Received') !== 'Delivered';
 }
 
+let period = '';
+let crewData = { tasks: null, workers: [], error: '' };
+const el = (id) => document.getElementById(id);
+const neg = (v) => `${v < 0 ? '− ' : ''}${currency(Math.abs(v))}`;
+
+function profitBar(label, value, max, color) {
+  const pct = max > 0 ? Math.round((Math.max(0, value) / max) * 100) : 0;
+  return `<div class="bar-row"><span class="bar-label">${escHtml(label)}</span><span class="bar-track"><span class="bar-fill" style="width:${pct}%; background:${color};"></span></span><span class="bar-value ${value < 0 ? 'trend-down' : ''}">${neg(value)}</span></div>`;
+}
+
+function renderProfit() {
+  const projects = getIncome();
+  const tasks = Array.isArray(crewData.tasks) ? crewData.tasks : [];
+  const dist = getPricing().distribution;
+  const months = [...new Set(projects.map((p) => monthKey(p.date)).filter(Boolean))].sort();
+  const sel = el('caPeriod');
+  if (period && !months.includes(period)) period = '';
+  sel.innerHTML = `<option value="">All time</option>${[...months].reverse().map((m) => `<option value="${m}" ${m === period ? 'selected' : ''}>${escHtml(monthLabel(m))}</option>`).join('')}`;
+  el('caBanner').style.display = crewData.error ? '' : 'none';
+  el('caBanner').textContent = crewData.error ? `Crew pay could not be loaded (${crewData.error}), so profit leaves crew pay out for now. Reopen this page to retry.` : '';
+  const f = summarize(projects, tasks, dist, { month: period });
+  const T = f.total;
+  el('caPeriodNote').textContent = `${period ? monthLabel(period) : 'All time'} — ${T.projects} project${T.projects === 1 ? '' : 's'} started in this period, on their full price. Travel and subscriptions use your Price Distributor %; crew pay counts as soon as it is assigned.`;
+  const kp = (cls, l, v) => `<div class="kpi-card ${cls}"><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div></div>`;
+  el('caProfitKpis').innerHTML = [
+    kp('c-blue', 'Billed', currency(T.price)),
+    kp('c-amber', 'Crew pay', currency(T.crewAssigned)),
+    kp(T.profit < 0 ? 'c-red' : 'c-green', 'Business profit', neg(T.profit)),
+    kp('c-purple', 'Margin', `${T.margin}%`),
+  ].join('');
+
+  // profit by month (always all months, so you can compare)
+  const all = summarize(projects, tasks, dist, {});
+  const byMonth = months.map((m) => ({ m, t: summarize(projects, tasks, dist, { month: m }).total }));
+  const maxM = Math.max(1, ...byMonth.map((x) => x.t.profit));
+  el('caProfitMonths').innerHTML = byMonth.length
+    ? byMonth.slice(-12).map((x) => profitBar(monthLabel(x.m), x.t.profit, maxM, 'var(--green, #4f9a6a)')).join('')
+    : '<p class="muted">No projects yet.</p>';
+
+  // most profitable clients (in the chosen period)
+  const cl = f.clients;
+  const maxC = Math.max(1, ...cl.map((c) => c.profit));
+  el('caProfitClients').innerHTML = cl.length
+    ? cl.slice(0, 8).map((c) => profitBar(c.client, c.profit, maxC, 'var(--green, #4f9a6a)')).join('')
+    : '<p class="muted">No projects in this period.</p>';
+
+  // per-client split table
+  el('caSplit').innerHTML = cl.length ? `
+    <div class="ca-table-wrap"><table class="ca-table"><thead><tr><th>Client</th><th>Billed</th><th>Crew</th><th>Referral</th><th>Travel + subs</th><th>Profit</th><th>Margin</th><th>Paid</th><th>Owes</th></tr></thead><tbody>
+    ${cl.map((c) => `<tr><td>${escHtml(c.client)} <small class="muted">(${c.projects})</small></td><td>${currency(c.price)}</td><td>${currency(c.crew)}</td><td>${currency(c.referral)}</td><td>${currency(c.setAside)}</td><td class="${c.profit < 0 ? 'trend-down' : ''}"><b>${neg(c.profit)}</b></td><td>${c.price ? Math.round((c.profit / c.price) * 100) : 0}%</td><td>${currency(c.received)}</td><td>${currency(c.balance)}</td></tr>`).join('')}
+    <tr class="ca-total"><td>Total</td><td>${currency(T.price)}</td><td>${currency(T.crewAssigned)}</td><td>${currency(T.referral)}</td><td>${currency(T.setAsideTotal)}</td><td><b>${neg(T.profit)}</b></td><td>${T.margin}%</td><td>${currency(T.received)}</td><td>${currency(T.balance)}</td></tr>
+    </tbody></table></div>` : '<p class="muted">No projects in this period.</p>';
+
+  // crew earnings (tasks of projects started in the period)
+  const ids = new Set(f.rows.map((r) => r.project.id));
+  const ce = crewEarnings(tasks.filter((t) => ids.has(t.project_id)));
+  const nameOf = (id) => (crewData.workers.find((w) => w.user_id === id) || {}).name || 'Unknown worker';
+  const maxE = Math.max(1, ...ce.map((e) => e.assigned));
+  el('caCrew').innerHTML = !Array.isArray(crewData.tasks) ? `<p class="muted">${crewData.error ? 'Crew pay is not available right now.' : 'Loading crew pay…'}</p>`
+    : ce.length ? ce.map((e) => profitBar(`${nameOf(e.worker_id)} · ${e.jobs} job${e.jobs === 1 ? '' : 's'}`, e.assigned, maxE, 'var(--blue, #5b7fa6)').replace('</div>', `<span class="ca-sub">paid ${currency(e.paid)} · owed ${currency(e.owed)}</span></div>`)).join('')
+    : '<p class="muted">No crew pay in this period.</p>';
+}
+
+async function loadCrewData() {
+  try {
+    const [tasks, workers] = await Promise.all([loadAllCrewTasks(), loadWorkers()]);
+    crewData = { tasks, workers, error: '' };
+  } catch (err) {
+    crewData = { tasks: null, workers: [], error: err.message || 'error' };
+  }
+  if (el('caPeriod')) renderProfit();
+}
+
 export function init() {
+  period = '';
+  crewData = { tasks: null, workers: [], error: '' };
+  renderProfit();
+  el('caPeriod').addEventListener('change', (e) => { period = e.target.value; renderProfit(); });
+  loadCrewData();
   const all = getIncome();
   const now = new Date();
   const thisYear = now.getFullYear();

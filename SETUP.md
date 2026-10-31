@@ -1132,3 +1132,16 @@ Open **Money**. You should see: Cash (money that moved), Where the money goes, C
 | "Paid to crew ₹0" but you paid someone | Pay is counted on the day you marked it paid. Check the month picker. |
 | Profit shows a minus | Crew pay + set-asides are higher than the project price. Check the crew pay on that project. |
 | "no crew assigned" on a project | That project has no crew rows, so its profit ignores crew cost. |
+
+## Connect 3 — profit and splits on the Analysis page (build 21)
+
+Upload the files from **`build21_changed_files_only.zip`**, then Ctrl+Shift+R. Settings → About should say **Connect 3 · Analysis profit + splits · build 21**. No SQL.
+
+Open **Analysis**. At the top is a new card with a period picker (All time or one month). Below it: profit by month, most profitable clients, a table of how every client's money is split, and crew earnings.
+
+| If you see | It means / do this |
+|---|---|
+| A red box "Crew pay could not be loaded" | The crew list could not be read. Reopen the page; profit leaves crew pay out until it loads. |
+| A client with profit in minus | Crew pay + travel/subscriptions is higher than what they were billed. Check the crew pay on their project. |
+| "Crew pay is not available right now" | Same as above, for the crew card. |
+| The table is wider than the phone | Swipe it sideways; the client name stays in place. |

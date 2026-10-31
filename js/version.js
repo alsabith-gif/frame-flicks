@@ -2,5 +2,5 @@
 // tell at a glance which version of the app is actually live.
 // Bumped at the end of every worker-system phase.
 
-export const APP_VERSION = 'Connect 2 · Money page in detail';
-export const APP_BUILD = 'build 20 · 25 Oct 2026';
+export const APP_VERSION = 'Connect 3 · Analysis profit + splits';
+export const APP_BUILD = 'build 21 · 31 Oct 2026';

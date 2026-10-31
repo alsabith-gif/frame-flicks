@@ -40,3 +40,14 @@
   color: var(--muted);
   margin-top: 4px;
 }
+.ca-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.ca-period { max-width: 100%; }
+.ca-note { font-size: 12.5px; margin: 0 0 10px; }
+.ca-banner { background: rgba(192,57,43,.12); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
+.ca-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ca-table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 620px; }
+.ca-table th, .ca-table td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ca-table th:first-child, .ca-table td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+.ca-table th { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+.ca-total td { border-top: 2px solid var(--border2); font-weight: 600; }
+.ca-sub { display: block; font-size: 11.5px; color: var(--muted); }

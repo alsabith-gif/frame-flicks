@@ -17,6 +17,35 @@
   </div>
 </div>
 
+<div class="card mt-16" id="caProfitCard">
+  <div class="ca-head">
+    <div class="card-title" style="margin:0">💰 Profit and where every rupee goes</div>
+    <select id="caPeriod" class="ca-period" aria-label="Period"></select>
+  </div>
+  <p class="muted ca-note" id="caPeriodNote">Projects started in the chosen period, on their full price.</p>
+  <div id="caBanner" class="ca-banner" style="display:none"></div>
+  <div class="kpi-grid" id="caProfitKpis"></div>
+</div>
+
+<div class="grid-2 mt-16">
+  <div class="card">
+    <div class="card-title">📊 Business profit by month</div>
+    <div id="caProfitMonths"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🏅 Most profitable clients</div>
+    <div id="caProfitClients"></div>
+  </div>
+  <div class="card span-2">
+    <div class="card-title">🧾 How each client's money is split</div>
+    <div id="caSplit"></div>
+  </div>
+  <div class="card span-2">
+    <div class="card-title">👷 Crew earnings</div>
+    <div id="caCrew"></div>
+  </div>
+</div>
+
 <div class="grid-2 mt-16">
   <div class="card">
     <div class="card-title">📈 Revenue Trend</div>
@@ -39,7 +68,7 @@
   </div>
 
   <div class="card span-2">
-    <div class="card-title">🥇 Top Clients by Revenue</div>
+    <div class="card-title">🥇 Top Clients by Billed Amount</div>
     <div id="caTopClients"></div>
   </div>
 
@@ -64,7 +93,7 @@
   </div>
 
   <div class="card span-2">
-    <div class="card-title">🧭 Revenue by Source</div>
+    <div class="card-title">🧭 Billed Amount by Source</div>
     <div id="caBySource"></div>
   </div>
 
